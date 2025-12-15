@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Califonix Quality Dashboard</title>
+    <!-- Bootstrap & Libraries -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        body { background: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .header { background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 15px; border-bottom: 4px solid #ffc107; display: flex; justify-content: space-between; align-items: center; }
+        .logo-box { background: white; padding: 5px 15px; border-radius: 5px; font-weight: bold; color: #1e3c72; font-size: 24px; letter-spacing: 1px; }
+        .card { border: none; box-shadow: 0 4px 8px rgba(0,0,0,0.05); margin-bottom: 20px; border-radius: 10px; }
+        .card-header { font-weight: bold; border-radius: 10px 10px 0 0 !important; }
+        .bg-primary-subtle { background-color: #eaf2ff; }
+        .hidden { display: none; }
+        .btn-custom { border-radius: 20px; padding: 8px 20px; font-weight: 600; }
+        canvas { max-height: 300px; }
+    </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+    <div class="d-flex align-items-center">
+        <!-- Logo Text (Image URL daal sakte hain img tag me) -->
+        <div class="logo-box">CALIFONIX</div> 
+        <h4 class="ms-3 mb-0">Dash Cam Daily Quality Report</h4>
+    </div>
+    <div id="dateDisplay" class="fw-bold"></div>
+</div>
+
+<div class="container mt-4">
+    <form id="mainForm">
+        
+        <!-- 1. Production Info -->
+        <div class="card">
+            <div class="card-header bg-primary text-white">1. Production & Quality Overview</div>
+            <div class="card-body bg-white">
+                <div class="row g-3">
+                    <div class="col-md-3"><label>Date</label><input type="date" id="date" class="form-control" required></div>
+                    <div class="col-md-3"><label>Model</label><input type="text" id="model" class="form-control" required></div>
+                    <div class="col-md-3"><label>Colour</label><input type="text" id="colour" class="form-control"></div>
+                    <div class="col-md-3"><label>Input Qty</label><input type="number" id="inputQty" class="form-control" oninput="calcMain()"></div>
+                    
+                    <div class="col-md-3"><label>Total Defect Qty</label><input type="number" id="defectQty" class="form-control" oninput="calcMain()"></div>
+                    <div class="col-md-3"><label>FG Qty (Passed)</label><input type="number" id="fgQty" class="form-control" readonly style="background:#e9ecef"></div>
+                    <div class="col-md-3"><label>Defect Rate %</label><input type="text" id="defectRate" class="form-control fw-bold text-danger" readonly></div>
+                    <div class="col-md-3"><label>FPY %</label><input type="text" id="fpyRate" class="form-control fw-bold text-success" readonly></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Defect Bifurcation (Multi Entries) -->
+        <div class="card border-warning">
+            <div class="card-header bg-warning text-dark d-flex justify-content-between">
+                <span>2. Defect Analysis (Top Issues)</span>
+                <button type="button" class="btn btn-sm btn-dark" onclick="addDefectRow()">+ Add Defect</button>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr><th>Defect Name</th><th>Type</th><th>Qty</th><th>Cause (If Process)</th><th>Action</th><th>Remove</th></tr>
+                    </thead>
+                    <tbody id="defectBody">
+                        <!-- Dynamic Rows Here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. PDI Section -->
+        <div class="card">
+            <div class="card-header bg-info text-white">3. PDI Performance</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3"><label>Ready for PDI (FG)</label><input type="number" id="pdiReady" class="form-control" readonly></div>
+                    <div class="col-md-3"><label>PDI Offer Qty</label><input type="number" id="pdiOffer" class="form-control" oninput="calcPDI()"></div>
+                    <div class="col-md-3"><label>PDI Pass Qty</label><input type="number" id="pdiPass" class="form-control" oninput="calcPDI()"></div>
+                    <div class="col-md-3"><label>Pass Rate %</label><input type="text" id="pdiRate" class="form-control fw-bold" readonly></div>
+                    
+                    <!-- Fail Alert -->
+                    <div class="col-md-12">
+                        <label class="text-danger fw-bold">PDI Fail Qty</label>
+                        <input type="number" id="pdiFail" class="form-control border-danger" readonly style="width: 150px; display:inline-block">
+                        <span id="failAlert" class="text-danger ms-2 hidden">⚠️ PDI FAILED - Fill Details Below</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Rejection Analysis (Hidden unless Fail > 0) -->
+        <div id="rejectionSection" class="card border-danger hidden">
+            <div class="card-header bg-danger text-white">4. PDI Rejection Analysis (CAPA)</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label>Defect Types (Hold Ctrl to select multiple)</label>
+                        <select id="rejTypes" class="form-select" multiple style="height: 100px;">
+                            <option>Function - Button Issue</option>
+                            <option>Function - Power Issue</option>
+                            <option>Aesthetic - Scratch</option>
+                            <option>Aesthetic - Gap</option>
+                            <option>Packing - Label Wrong</option>
+                            <option>Packing - Missing Accessory</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6"><label>Root Cause</label><textarea id="rootCause" class="form-control" rows="2"></textarea></div>
+                    <div class="col-md-6"><label>Corrective Action</label><textarea id="correctiveAction" class="form-control" rows="2"></textarea></div>
+                    <div class="col-md-6"><label>Preventive Action</label><textarea id="preventiveAction" class="form-control" rows="2"></textarea></div>
+                    <div class="col-md-6"><label>Evidence Link</label><input type="text" id="evidence" class="form-control" placeholder="Google Drive Link"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Graphs -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-center">Defect Pareto Chart</h6>
+                        <canvas id="paretoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="text-center">Production vs Defect</h6>
+                        <canvas id="pieChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex justify-content-center gap-3 mb-5">
+            <button type="button" class="btn btn-warning btn-custom" onclick="renderGraphs()">📊 Update Graphs</button>
+            <button type="button" class="btn btn-success btn-custom" onclick="exportExcel()">📗 Download Excel</button>
+            <button type="button" class="btn btn-primary btn-custom" onclick="exportPPT()">📘 Download PPT</button>
+            <button type="button" class="btn btn-dark btn-custom" id="saveBtn" onclick="saveToGoogle()">☁️ Save to Google Sheet</button>
+        </div>
+    </form>
+</div>
+
+<!-- SCRIPTS -->
+<script>
+    // --- CONFIGURATION ---
+    // YAHAN APNA GOOGLE SCRIPT URL PASTE KAREIN
+    const SCRIPT_URL = "YOUR_GOOGLE_SCRIPT_WEB_APP_URL_HERE"; 
+
+    // Initialize Date
+    document.getElementById('date').valueAsDate = new Date();
+    document.getElementById('dateDisplay').innerText = new Date().toDateString();
+
+    // --- CALCULATIONS ---
+    function calcMain() {
+        let inp = +document.getElementById('inputQty').value || 0;
+        let def = +document.getElementById('defectQty').value || 0;
+        let fg = inp - def;
+
+        document.getElementById('fgQty').value = fg;
+        document.getElementById('pdiReady').value = fg;
+        
+        let dRate = inp ? ((def/inp)*100).toFixed(2) : 0;
+        let fpy = inp ? ((fg/inp)*100).toFixed(2) : 0;
+        
+        document.getElementById('defectRate').value = dRate + "%";
+        document.getElementById('fpyRate').value = fpy + "%";
+    }
+
+    function calcPDI() {
+        let offer = +document.getElementById('pdiOffer').value || 0;
+        let pass = +document.getElementById('pdiPass').value || 0;
+        let fail = offer - pass;
+        
+        document.getElementById('pdiFail').value = fail;
+        document.getElementById('pdiRate').value = offer ? ((pass/offer)*100).toFixed(2) + "%" : "0%";
+
+        // Show/Hide Rejection Section
+        const sec = document.getElementById('rejectionSection');
+        const alert = document.getElementById('failAlert');
+        if (fail > 0) {
+            sec.classList.remove('hidden');
+            alert.classList.remove('hidden');
+        } else {
+            sec.classList.add('hidden');
+            alert.classList.add('hidden');
+        }
+    }
+
+    // --- DYNAMIC DEFECTS ---
+    function addDefectRow() {
+        let rowId = 'd-' + Date.now();
+        let html = `
+            <tr id="${rowId}">
+                <td><input type="text" class="form-control name" placeholder="Defect Name"></td>
+                <td>
+                    <select class="form-select type" onchange="toggleCause(this)">
+                        <option value="RMD">RMD</option>
+                        <option value="Process">Process</option>
+                    </select>
+                </td>
+                <td><input type="number" class="form-control qty" value="0"></td>
+                <td><input type="text" class="form-control cause" disabled placeholder="N/A"></td>
+                <td><input type="text" class="form-control action" placeholder="Action"></td>
+                <td><button type="button" class="btn btn-danger btn-sm" onclick="document.getElementById('${rowId}').remove()">X</button></td>
+            </tr>
+        `;
+        document.getElementById('defectBody').insertAdjacentHTML('beforeend', html);
+    }
+
+    function toggleCause(select) {
+        let row = select.closest('tr');
+        let causeInp = row.querySelector('.cause');
+        if(select.value === 'Process') {
+            causeInp.disabled = false;
+            causeInp.placeholder = "Enter Root Cause";
+        } else {
+            causeInp.disabled = true;
+            causeInp.value = "";
+            causeInp.placeholder = "N/A";
+        }
+    }
+
+    // --- GRAPHS ---
+    let myPareto, myPie;
+    function renderGraphs() {
+        // Collect Data
+        let labels = [], data = [];
+        document.querySelectorAll('#defectBody tr').forEach(row => {
+            let n = row.querySelector('.name').value;
+            let q = +row.querySelector('.qty').value;
+            if(n && q > 0) { labels.push(n); data.push(q); }
+        });
+
+        // Pie Data
+        let good = +document.getElementById('fgQty').value;
+        let bad = +document.getElementById('defectQty').value;
+
+        // Draw Pareto
+        if(myPareto) myPareto.destroy();
+        myPareto = new Chart(document.getElementById('paretoChart'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ label: 'Qty', data: data, backgroundColor: '#dc3545' }]
+            }
+        });
+
+        // Draw Pie
+        if(myPie) myPie.destroy();
+        myPie = new Chart(document.getElementById('pieChart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['OK', 'NG'],
+                datasets: [{ data: [good, bad], backgroundColor: ['#198754', '#dc3545'] }]
+            }
+        });
+    }
+
+    // --- EXPORT TO EXCEL ---
+    function exportExcel() {
+        let wb = XLSX.utils.book_new();
+        let ws_data = [
+            ["Califonix Daily Report"],
+            ["Date", document.getElementById('date').value],
+            ["Model", document.getElementById('model').value],
+            ["Input", document.getElementById('inputQty').value],
+            ["FG", document.getElementById('fgQty').value],
+            ["Defect %", document.getElementById('defectRate').value],
+            [],
+            ["Defect Details"],
+            ["Name", "Type", "Qty", "Cause", "Action"]
+        ];
+
+        // Add Defects
+        document.querySelectorAll('#defectBody tr').forEach(row => {
+            ws_data.push([
+                row.querySelector('.name').value,
+                row.querySelector('.type').value,
+                row.querySelector('.qty').value,
+                row.querySelector('.cause').value,
+                row.querySelector('.action').value
+            ]);
+        });
+
+        let ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, "Report");
+        XLSX.writeFile(wb, "Califonix_Report.xlsx");
+    }
+
+    // --- EXPORT TO PPT ---
+    function exportPPT() {
+        let pres = new PptxGenJS();
+        let slide = pres.addSlide();
+        
+        // Header
+        slide.addText("CALIFONIX - Quality Report", { x: 0.5, y: 0.5, fontSize: 24, bold: true, color: '1e3c72' });
+        slide.addText(`Date: ${document.getElementById('date').value}`, { x: 0.5, y: 1.0, fontSize: 14 });
+        
+        // Stats
+        let stats = `Input: ${document.getElementById('inputQty').value} | FG: ${document.getElementById('fgQty').value} | Defect Rate: ${document.getElementById('defectRate').value}`;
+        slide.addText(stats, { x: 0.5, y: 1.5, fontSize: 16, color: '007bff' });
+
+        // Add Defect Table if exists
+        let rows = [['Defect', 'Qty', 'Action']];
+        document.querySelectorAll('#defectBody tr').forEach(row => {
+            let n = row.querySelector('.name').value;
+            let q = row.querySelector('.qty').value;
+            let a = row.querySelector('.action').value;
+            if(n) rows.push([n, q, a]);
+        });
+        
+        if(rows.length > 1) {
+            slide.addTable(rows, { x: 0.5, y: 2.5, w: 8, border: {pt:1}, headFill: 'F1F1F1' });
+        }
+
+        pres.writeFile({ fileName: "Califonix_Presentation.pptx" });
+    }
+
+    // --- SAVE TO GOOGLE SHEET ---
+    function saveToGoogle() {
+        const btn = document.getElementById('saveBtn');
+        btn.innerText = "Saving...";
+        btn.disabled = true;
+
+        // Collect Defect List
+        let defectList = [];
+        document.querySelectorAll('#defectBody tr').forEach(row => {
+            defectList.push({
+                name: row.querySelector('.name').value,
+                type: row.querySelector('.type').value,
+                qty: row.querySelector('.qty').value,
+                cause: row.querySelector('.cause').value,
+                action: row.querySelector('.action').value
+            });
+        });
+
+        // Collect Rejection Details
+        let rejTypes = Array.from(document.getElementById('rejTypes').selectedOptions).map(opt => opt.value).join(", ");
+        let rejDetails = `Types: ${rejTypes} | RC: ${document.getElementById('rootCause').value} | CA: ${document.getElementById('correctiveAction').value}`;
+
+        // Create Data Object
+        let payload = {
+            date: document.getElementById('date').value,
+            model: document.getElementById('model').value,
+            colour: document.getElementById('colour').value,
+            inputQty: document.getElementById('inputQty').value,
+            fgQty: document.getElementById('fgQty').value,
+            defectQty: document.getElementById('defectQty').value,
+            defectRate: document.getElementById('defectRate').value,
+            pdiOffer: document.getElementById('pdiOffer').value,
+            pdiPass: document.getElementById('pdiPass').value,
+            pdiFail: document.getElementById('pdiFail').value,
+            pdiRate: document.getElementById('pdiRate').value,
+            rejDetails: rejDetails,
+            defectList: defectList
+        };
+
+        // Send
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors', // Important for simple requests
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        }).then(() => {
+            alert("Data Saved Successfully to Google Sheet!");
+            btn.innerText = "☁️ Save to Google Sheet";
+            btn.disabled = false;
+        }).catch(err => {
+            console.error(err);
+            alert("Sent! (Check Sheet to confirm)"); // no-cors returns opaque response
+            btn.innerText = "☁️ Save to Google Sheet";
+            btn.disabled = false;
+        });
+    }
+</script>
+</body>
+</html>
