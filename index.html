@@ -302,7 +302,7 @@
 <script>
     // --- CONFIGURATION ---
     const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png"; //
-    const API_URL = "https://script.google.com/macros/s/AKfycbzEgdlCLOOe0ZqL-A5UUcGiWxGKOuepl76a2S98XhSVHJQolj44sKmkc67C4ffqDsTnuw/exec"; // आपकी Script URL
+    const API_URL = "https://script.google.com/macros/s/AKfycbzEgdlCLOOe0ZqL-A5UUcGiWxGKOuepl76a2S98XhSVHJQolj44sKmkc67C4ffqDsTnuw/exec"; // 
     const GEMINI_API_KEY = "AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc"; //
 
     document.getElementById('navLogo').src = LOGO_URL;
@@ -312,7 +312,7 @@
 
     // --- 1. AI REWRITE FUNCTION ---
     async function aiRewrite(inputId) {
-        if(!GEMINI_API_KEY) { alert("Please set the GEMINI_API_KEY in the code first."); return; }
+        if(!GEMINI_API_KEY) { alert("AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc."); return; }
         
         const inputField = document.getElementById(inputId);
         const originalText = inputField.value;
@@ -322,7 +322,7 @@
         inputField.disabled = true;
 
         const prompt = `Rewrite this manufacturing action plan to be professional, clear, and concise in English: "${originalText}"`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc}`;
 
         try {
             const response = await fetch(url, {
@@ -618,6 +618,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
 
 
 
