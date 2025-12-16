@@ -311,6 +311,7 @@
     let ALL_DATA = []; // Store fetched data locally
 
     // --- 1. AI REWRITE FUNCTION ---
+    // --- 1. AI REWRITE FUNCTION (UPDATED) ---
     async function aiRewrite(inputId) {
         if(!GEMINI_API_KEY) { alert("Please set the GEMINI_API_KEY in the code first."); return; }
         
@@ -318,11 +319,15 @@
         const originalText = inputField.value;
         if(!originalText) { alert("Please write something first!"); return; }
 
-        inputField.value = "AI rewriting...";
+        // Loading State
+        const originalBtnText = inputField.nextElementSibling.innerText;
+        inputField.nextElementSibling.innerText = "⏳";
         inputField.disabled = true;
 
         const prompt = `Rewrite this manufacturing action plan to be professional, clear, and concise in English: "${originalText}"`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
+        
+        // 🔴 CHANGE: Updated Model to gemini-1.5-flash
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
         try {
             const response = await fetch(url, {
@@ -330,14 +335,30 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
+
+            if (!response.ok) {
+                throw new Error(`API Error: ${response.status}`);
+            }
+
             const data = await response.json();
-            const newText = data.candidates[0].content.parts[0].text;
-            inputField.value = newText;
+            
+            // Check if data exists
+            if (data.candidates && data.candidates.length > 0) {
+                const newText = data.candidates[0].content.parts[0].text;
+                inputField.value = newText;
+            } else {
+                throw new Error("No response from AI");
+            }
+
         } catch(e) {
             alert("AI Error: " + e.message);
-            inputField.value = originalText;
+            console.error(e);
+            inputField.value = originalText; // Revert on error
         }
+        
+        // Reset State
         inputField.disabled = false;
+        inputField.nextElementSibling.innerText = "✨ AI";
     }
 
     // --- 2. CALCULATIONS ---
@@ -618,3 +639,4 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+
