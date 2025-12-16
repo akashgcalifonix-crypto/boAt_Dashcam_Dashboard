@@ -4,105 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Califonix Smart Dashboard</title>
-    <!-- CSS Libraries -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- JS Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
      
     <style>
-        :root { --primary-color: #0d6efd; --bg-color: #f4f6f9; }
-        body { background: var(--bg-color); font-family: 'Segoe UI', Roboto, sans-serif; font-size: 0.9rem; }
-        
-        /* Navbar */
-        .navbar { background: white; border-bottom: 3px solid var(--primary-color); }
-        
-        /* Dashboard Cards */
-        .card { border: none; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .section-head { background: #eef2f7; color: #333; padding: 10px 15px; border-radius: 8px; font-weight: 700; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-        
-        /* KPIs */
-        .kpi-card { text-align: center; padding: 15px; border-radius: 8px; color: white; position: relative; overflow: hidden; }
-        .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
-        .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
-        .bg-gradient-danger { background: linear-gradient(45deg, #e74a3b, #be2617); }
-        .bg-gradient-warning { background: linear-gradient(45deg, #f6c23e, #dda20a); }
-
-        /* AI Button */
-        .ai-btn { cursor: pointer; background: linear-gradient(135deg, #6f42c1, #a05bf5); color: white; border: none; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; transition: 0.3s; }
-        .ai-btn:hover { transform: scale(1.05); box-shadow: 0 2px 5px rgba(111, 66, 193, 0.4); }
-
-        /* Preview Modal Styling */
-        .preview-box { border: 2px solid #0d6efd; padding: 20px; border-radius: 10px; background: #fff; }
-        .preview-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
-        .preview-logo { height: 60px; }
-        .badge-custom { font-size: 1rem; padding: 8px 15px; border-radius: 5px; }
+        :root { --primary: #0d6efd; --bg: #f8f9fa; }
+        body { background: var(--bg); font-family: 'Segoe UI', sans-serif; font-size: 0.9rem; }
+        .navbar { background: white; border-bottom: 3px solid var(--primary); }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .section-head { background: #e9ecef; padding: 10px 15px; border-radius: 8px; font-weight: 700; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .kpi-box { color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .bg-grad-1 { background: linear-gradient(45deg, #4e73df, #224abe); }
+        .bg-grad-2 { background: linear-gradient(45deg, #1cc88a, #13855c); }
+        .bg-grad-3 { background: linear-gradient(45deg, #e74a3b, #be2617); }
+        .ai-btn { cursor: pointer; background: #6f42c1; color: white; border: none; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; }
+        .ai-btn:hover { background: #5a32a3; }
+        .preview-box { border: 2px solid var(--primary); padding: 20px; background: white; border-radius: 10px; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-<!-- === NAVBAR === -->
 <nav class="navbar navbar-expand-lg px-4 sticky-top shadow-sm">
     <div class="d-flex align-items-center">
-        <img id="navLogo" src="" style="height: 50px;" class="me-3" alt="Califonix">
+        <img id="navLogo" src="" style="height: 45px;" class="me-3">
         <div>
-            <h5 class="text-primary fw-bold mb-0">Production & PDI System</h5>
-            <small class="text-muted">Smart Manufacturing Dashboard</small>
+            <h5 class="text-primary fw-bold mb-0">Califonix Production System</h5>
+            <small class="text-muted">Smart Report & Analytics</small>
         </div>
     </div>
     <div class="ms-auto">
-        <ul class="nav nav-pills" id="mainTab" role="tablist">
+        <ul class="nav nav-pills" id="mainTab">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#entryTab">📝 Data Entry</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prodDashTab" onclick="loadData('PROD')">🏭 Production Dashboard</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pdiDashTab" onclick="loadData('PDI')">🛡️ PDI Dashboard</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#dashTab" onclick="loadData()">📊 Dashboard</button></li>
         </ul>
     </div>
 </nav>
 
 <div class="container-fluid mt-4 px-4 pb-5 tab-content">
 
-    <!-- ========================= 1. DATA ENTRY TAB ========================= -->
+    <!-- DATA ENTRY TAB -->
     <div class="tab-pane fade show active" id="entryTab">
         <form id="mainForm">
-            <input type="hidden" id="recordId"> <!-- For Edit Mode -->
+            <input type="hidden" id="recordId"> 
             
-            <!-- PRODUCTION SECTION -->
+            <!-- PRODUCTION INFO -->
             <div class="card">
                 <div class="card-body">
                     <div class="section-head">
                         <span><i class="fas fa-industry"></i> Production Details</span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetForm()">🔄 New Entry</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="resetForm()">🔄 Reset</button>
                     </div>
-                    
                     <div class="row g-3">
                         <div class="col-md-2"><label>Date</label><input type="date" id="date" class="form-control"></div>
-                        <div class="col-md-2"><label>Line</label><select id="line" class="form-select"><option>Line 1</option><option>Line 2</option><option>Line 3</option></select></div>
-                        <div class="col-md-2"><label>Model</label><input type="text" id="model" class="form-control" placeholder="Model Name"></div>
+                        <div class="col-md-2"><label>Line No</label><select id="line" class="form-select"><option>Line 1</option><option>Line 2</option><option>Line 3</option></select></div>
+                        <div class="col-md-2"><label>Model Name</label><input type="text" id="model" class="form-control" placeholder="Enter Model"></div>
                         <div class="col-md-2"><label>Input Qty</label><input type="number" id="inputQty" class="form-control" oninput="calcRates()" placeholder="0"></div>
-                        <div class="col-md-2"><label>FG (Pass) Qty</label><input type="number" id="fgQty" class="form-control fw-bold text-success" readonly placeholder="Auto-calc"></div>
+                        <div class="col-md-2"><label>FG (Pass)</label><input type="number" id="fgQty" class="form-control fw-bold text-success" readonly></div>
                         <div class="col-md-2"><label>FPY %</label><input type="text" id="fpyRate" class="form-control fw-bold text-primary" readonly></div>
                     </div>
 
-                    <!-- Defect Table -->
+                    <!-- DEFECT TABLE -->
                     <div class="mt-4 p-3 bg-light rounded border">
-                        <div class="d-flex justify-content-between mb-2">
-                            <h6 class="fw-bold text-danger"><i class="fas fa-exclamation-triangle"></i> Defects & Rejection</h6>
-                            <div>
-                                <span class="badge bg-warning text-dark me-2">RMD: <span id="rmdRate">0%</span></span>
-                                <span class="badge bg-danger">Process: <span id="procRate">0%</span></span>
-                            </div>
-                        </div>
+                        <h6 class="fw-bold text-danger">⚠️ Defects & Rejection</h6>
                         <table class="table table-bordered bg-white align-middle" id="prodTable">
                             <thead class="table-secondary">
                                 <tr>
-                                    <th width="20%">Defect Name</th>
-                                    <th width="10%">Qty</th>
-                                    <th width="15%">Type</th>
-                                    <th width="20%">Root Cause</th>
-                                    <th width="30%">Action Plan</th>
+                                    <th>Defect Name</th>
+                                    <th width="100">Qty</th>
+                                    <th>Rate %</th> <!-- NEW COLUMN REQUESTED -->
+                                    <th>Type</th>
+                                    <th>Root Cause</th>
+                                    <th>Action Plan (AI)</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -113,301 +88,154 @@
                 </div>
             </div>
 
-            <!-- PDI SECTION -->
+            <!-- PDI INFO -->
             <div class="card">
                 <div class="card-body">
                     <div class="section-head">
-                        <span><i class="fas fa-shield-alt"></i> PDI Performance</span>
+                        <span><i class="fas fa-check-circle"></i> PDI Performance</span>
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="pdiToggle" onchange="togglePDI()">
                             <label class="form-check-label">Enable PDI</label>
                         </div>
                     </div>
-
                     <div id="pdiSection" class="hidden">
                         <div class="row g-3">
-                            <div class="col-md-3"><label>PDI Offered</label><input type="number" id="pdiOffer" class="form-control" oninput="calcPDI()"></div>
-                            <div class="col-md-3"><label>PDI Passed</label><input type="number" id="pdiPass" class="form-control" oninput="calcPDI()"></div>
-                            <div class="col-md-3"><label>PDI Failed</label><input type="number" id="pdiFail" class="form-control text-danger fw-bold" readonly></div>
-                            <div class="col-md-3"><label>PDI Pass Rate</label><input type="text" id="pdiRate" class="form-control text-success fw-bold" readonly></div>
+                            <div class="col-md-3"><label>PDI Offer</label><input type="number" id="pdiOffer" class="form-control" oninput="calcPDI()"></div>
+                            <div class="col-md-3"><label>PDI Pass</label><input type="number" id="pdiPass" class="form-control" oninput="calcPDI()"></div>
+                            <div class="col-md-3"><label>PDI Fail</label><input type="number" id="pdiFail" class="form-control text-danger fw-bold" readonly></div>
                         </div>
-
-                        <!-- PDI Issues -->
-                        <div id="pdiFailDetails" class="mt-4 hidden border border-danger rounded p-3">
-                            <h6 class="text-danger fw-bold">⚠️ PDI Fail Analysis</h6>
-                            <table class="table table-sm table-bordered">
-                                <thead class="table-danger"><tr><th>Category</th><th>Details</th><th>Qty</th><th>Root Cause</th><th>Action (AI)</th></tr></thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Function</td>
-                                        <td><input type="text" id="pfd" class="form-control"></td>
-                                        <td><input type="number" id="pfq" class="form-control" value="0"></td>
-                                        <td><input type="text" id="pfc" class="form-control"></td>
-                                        <td><div class="input-group"><input type="text" id="pfa" class="form-control"><button class="ai-btn" onclick="aiRewrite('pfa')" type="button">✨ AI</button></div></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Aesthetic</td>
-                                        <td><input type="text" id="pad" class="form-control"></td>
-                                        <td><input type="number" id="paq" class="form-control" value="0"></td>
-                                        <td><input type="text" id="pac" class="form-control"></td>
-                                        <td><div class="input-group"><input type="text" id="paa" class="form-control"><button class="ai-btn" onclick="aiRewrite('paa')" type="button">✨ AI</button></div></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Packing</td>
-                                        <td><input type="text" id="ppd" class="form-control"></td>
-                                        <td><input type="number" id="ppq" class="form-control" value="0"></td>
-                                        <td><input type="text" id="ppc" class="form-control"></td>
-                                        <td><div class="input-group"><input type="text" id="ppa" class="form-control"><button class="ai-btn" onclick="aiRewrite('ppa')" type="button">✨ AI</button></div></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div class="mt-3">
+                            <label>PDI Failure Details</label>
+                            <input type="text" id="pdiDetails" class="form-control" placeholder="Describe failure reason if any...">
+                            <button type="button" class="ai-btn mt-1" onclick="aiRewrite('pdiDetails')">✨ AI Fix</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Submit Button -->
             <div class="text-center py-3">
                 <button type="button" class="btn btn-dark btn-lg px-5 shadow" onclick="showPreview()">👁️ Preview & Submit</button>
             </div>
         </form>
     </div>
 
-    <!-- ========================= 2. PRODUCTION DASHBOARD ========================= -->
-    <div class="tab-pane fade" id="prodDashTab">
-        <!-- Filters -->
-        <div class="card p-3 mb-3">
+    <!-- DASHBOARD TAB -->
+    <div class="tab-pane fade" id="dashTab">
+        <div class="card p-3">
             <div class="row align-items-end g-2">
-                <div class="col-md-3"><label>Start Date</label><input type="date" id="prodStart" class="form-control"></div>
-                <div class="col-md-3"><label>End Date</label><input type="date" id="prodEnd" class="form-control"></div>
-                <div class="col-md-2"><label>Model</label><select id="prodModelFilter" class="form-select"><option value="All">All</option></select></div>
-                <div class="col-md-2"><button class="btn btn-primary w-100" onclick="updateProdDash()">🔎 Search</button></div>
-                <div class="col-md-2"><button class="btn btn-success w-100" onclick="exportToExcel('PROD')">📥 Excel</button></div>
+                <div class="col-md-3"><label>Start Date</label><input type="date" id="dashStart" class="form-control"></div>
+                <div class="col-md-3"><label>End Date</label><input type="date" id="dashEnd" class="form-control"></div>
+                <div class="col-md-3"><button class="btn btn-primary w-100" onclick="updateDash()">🔎 Filter</button></div>
+                <div class="col-md-3"><button class="btn btn-success w-100" onclick="exportExcel()">📥 Download Report</button></div>
             </div>
         </div>
 
-        <!-- KPIs -->
         <div class="row mb-4">
-            <div class="col-md-3"><div class="kpi-card bg-gradient-success"><h3>Avg FPY</h3><h1 id="kpi-fpy" class="mb-0">0%</h1></div></div>
-            <div class="col-md-3"><div class="kpi-card bg-gradient-danger"><h3>Process NG</h3><h1 id="kpi-proc" class="mb-0">0%</h1></div></div>
-            <div class="col-md-3"><div class="kpi-card bg-gradient-warning"><h3>RMD NG</h3><h1 id="kpi-rmd" class="mb-0">0%</h1></div></div>
-            <div class="col-md-3"><div class="kpi-card bg-gradient-primary"><h3>Production</h3><h1 id="kpi-vol" class="mb-0">0</h1></div></div>
+            <div class="col-md-4"><div class="kpi-box bg-grad-1"><h3>Total Input</h3><h1 id="k-input">0</h1></div></div>
+            <div class="col-md-4"><div class="kpi-box bg-grad-2"><h3>Avg FPY</h3><h1 id="k-fpy">0%</h1></div></div>
+            <div class="col-md-4"><div class="kpi-box bg-grad-3"><h3>Total Defects</h3><h1 id="k-defects">0</h1></div></div>
         </div>
 
-        <!-- Charts -->
         <div class="row">
-            <div class="col-md-8">
-                <div class="card p-3 shadow-sm">
-                    <h6 class="fw-bold text-primary">📈 FPY & Rejection Trend</h6>
-                    <div style="height: 300px;"><canvas id="prodTrendChart"></canvas></div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card p-3 shadow-sm">
-                    <h6 class="fw-bold text-primary">📊 Pareto Analysis (Top 5)</h6>
-                    <div style="height: 300px;"><canvas id="prodParetoChart"></canvas></div>
-                </div>
-            </div>
+            <div class="col-md-8"><div class="card p-3"><h5>📈 Production Trend</h5><canvas id="chartTrend" style="height:300px"></canvas></div></div>
+            <div class="col-md-4"><div class="card p-3"><h5>📊 Top 5 Defects</h5><canvas id="chartPareto" style="height:300px"></canvas></div></div>
         </div>
 
-        <!-- Top Issues Report -->
-        <div class="card p-3 mt-3 border-danger border-start border-4">
-            <h6 class="fw-bold text-danger">⚠️ Top 5 Issues Report (Action Plan)</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered table-striped table-sm" id="topIssuesTable">
-                    <thead class="table-dark"><tr><th>Issue</th><th>Count</th><th>Root Cause</th><th>Action Taken</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Records Table (CRUD) -->
         <div class="card p-3 mt-3">
-            <h6 class="fw-bold">📝 Recent Production Records</h6>
+            <h5>📝 Records History (Edit / Delete)</h5>
             <div class="table-responsive">
-                <table class="table table-hover table-sm align-middle" id="prodListTable">
-                    <thead class="bg-light"><tr><th>Date</th><th>Model</th><th>Input</th><th>FG</th><th>FPY</th><th>Action</th></tr></thead>
+                <table class="table table-striped table-sm" id="recTable">
+                    <thead class="table-dark"><tr><th>Date</th><th>Model</th><th>Input</th><th>FG</th><th>FPY</th><th>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
         </div>
     </div>
-
-    <!-- ========================= 3. PDI DASHBOARD ========================= -->
-    <div class="tab-pane fade" id="pdiDashTab">
-        <div class="card p-3 mb-3">
-            <div class="row align-items-end g-2">
-                <div class="col-md-3"><label>Month</label><input type="month" id="pdiMonth" class="form-control"></div>
-                <div class="col-md-2"><button class="btn btn-primary w-100" onclick="updatePDIDash()">Refresh</button></div>
-                <div class="col-md-2"><button class="btn btn-success w-100" onclick="exportToExcel('PDI')">📥 Excel</button></div>
-            </div>
-        </div>
-        <!-- Placeholders for PDI Charts/Tables would go here similar to Production Tab -->
-        <div class="alert alert-info">PDI Dashboard Components are similar to Production (Code optimized for length).</div>
-    </div>
-
 </div>
 
-<!-- PREVIEW MODAL (PROFESSIONAL) -->
+<!-- PREVIEW MODAL -->
 <div class="modal fade" id="prevModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-body p-0">
-                <div id="prevContent"></div> <!-- Dynamic Content -->
-            </div>
-            <div class="modal-footer bg-light">
+            <div class="modal-body" id="prevContent"></div>
+            <div class="modal-footer">
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Edit</button>
-                <button class="btn btn-success fw-bold" id="finalBtn" onclick="submitData()">✅ Final Submit</button>
+                <button class="btn btn-success" id="finalBtn" onclick="submitData()">✅ Submit</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- DATA VIEW MODAL (READ ONLY) -->
-<div class="modal fade" id="viewModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title">Record Details</h5><button class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body" id="viewContent"></div>
         </div>
     </div>
 </div>
 
 <script>
-    // --- CONFIGURATION ---
+    // --- SETTINGS ---
     const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png"; 
-    const API_URL = "https://script.google.com/macros/s/AKfycbzEgdlCLOOe0ZqL-A5UUcGiWxGKOuepl76a2S98XhSVHJQolj44sKmkc67C4ffqDsTnuw/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbyRgFGaZm1rvmvYST4Y94nrbvitSEauZ8KWs9_CpjeVVvuohhX8W7Kh_RGAQW8EMuJHiA/exec"; // 🔴 INSERT NEW SCRIPT URL HERE
     const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
     document.getElementById('navLogo').src = LOGO_URL;
     document.getElementById('date').valueAsDate = new Date();
     let ALL_DATA = [];
 
-    // --- 1. AI REWRITE FUNCTION (GEMINI 1.5 FLASH) ---
-    async function aiRewrite(inputId) {
-        if(!GEMINI_API_KEY) { alert("API Key missing!"); return; }
-        const inputField = document.getElementById(inputId);
-        const originalText = inputField.value;
-        if(!originalText) { alert("Write something first!"); return; }
-
-        const btn = inputField.nextElementSibling;
-        const orgBtnText = btn.innerText;
-        btn.innerText = "⏳"; btn.disabled = true; inputField.disabled = true;
-
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
-        const prompt = `Rewrite this manufacturing action plan to be professional and concise in English: "${originalText}"`;
+    // --- 1. AI FUNCTION (FIXED) ---
+    async function aiRewrite(id) {
+        if(!GEMINI_API_KEY) { alert("API Key Missing"); return; }
+        const el = document.getElementById(id);
+        if(!el.value) { alert("Write something first"); return; }
+        
+        const oldTxt = el.value;
+        el.value = "AI rewriting..."; el.disabled = true;
 
         try {
-            const response = await fetch(url, {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+            const res = await fetch(url, {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                body: JSON.stringify({ contents: [{ parts: [{ text: "Rewrite professionally: " + oldTxt }] }] })
             });
-            const data = await response.json();
-            if(data.candidates?.[0]?.content?.parts?.[0]?.text) {
-                inputField.value = data.candidates[0].content.parts[0].text;
-            } else { throw new Error("AI No Response"); }
-        } catch(e) { console.error(e); inputField.value = originalText; alert("AI Error. Check Console."); }
-        
-        btn.innerText = orgBtnText; btn.disabled = false; inputField.disabled = false;
+            const d = await res.json();
+            el.value = d.candidates[0].content.parts[0].text;
+        } catch(e) { 
+            console.error(e); 
+            el.value = oldTxt; 
+            alert("AI Error. Check Console."); 
+        }
+        el.disabled = false;
     }
 
-    // --- 2. CALCULATIONS (FPY based on Defects) ---
+    // --- 2. CALCULATIONS ---
     function calcRates() {
         const inp = +document.getElementById('inputQty').value || 0;
-        
-        // Sum Defects
-        let procQ = 0, rmdQ = 0;
+        let totalDef = 0;
+
         document.querySelectorAll('#prodTable tbody tr').forEach(r => {
             const q = +r.querySelector('.d-qty').value || 0;
-            const t = r.querySelector('.d-type').value;
-            if(t === 'Process') procQ += q; else rmdQ += q;
+            totalDef += q;
+            // Update Row Rate
+            const rateField = r.querySelector('.d-rate');
+            if(rateField) rateField.innerText = inp ? ((q/inp)*100).toFixed(2)+"%" : "0%";
         });
 
-        const totalDefects = procQ + rmdQ;
-        const goodQty = inp - totalDefects;
-
-        // Auto Update FG Qty based on Logic: Input - Defects = FG
-        document.getElementById('fgQty').value = goodQty > 0 ? goodQty : 0;
-
-        // Calculate Rates
-        document.getElementById('fpyRate').value = inp ? ((goodQty/inp)*100).toFixed(1)+"%" : "0%";
-        document.getElementById('procRate').innerText = inp ? ((procQ/inp)*100).toFixed(1)+"%" : "0%";
-        document.getElementById('rmdRate').innerText = inp ? ((rmdQ/inp)*100).toFixed(1)+"%" : "0%";
-        
-        // Color coding
-        document.getElementById('fpyRate').className = `form-control fw-bold ${goodQty/inp >= 0.9 ? 'text-success' : 'text-danger'}`;
+        const fg = inp - totalDef;
+        document.getElementById('fgQty').value = fg > 0 ? fg : 0;
+        document.getElementById('fpyRate').value = inp ? ((fg/inp)*100).toFixed(1)+"%" : "0%";
     }
 
     function addProdRow() {
         const id = 'act_' + Math.random().toString(36).substr(2, 5);
         document.querySelector('#prodTable tbody').insertAdjacentHTML('beforeend', `
             <tr>
-                <td><input type="text" class="form-control d-name" placeholder="Defect Name"></td>
+                <td><input type="text" class="form-control d-name"></td>
                 <td><input type="number" class="form-control d-qty" value="1" oninput="calcRates()"></td>
-                <td><select class="form-select d-type" onchange="calcRates()"><option>Process</option><option>RMD</option></select></td>
-                <td><input type="text" class="form-control d-cause" placeholder="Cause"></td>
-                <td><div class="input-group"><input type="text" class="form-control d-action" id="${id}" placeholder="Action"><button class="ai-btn" onclick="aiRewrite('${id}')" type="button">✨ AI</button></div></td>
-                <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); calcRates()">✖</button></td>
+                <td class="text-danger fw-bold d-rate">0%</td>
+                <td><select class="form-select d-type"><option>Process</option><option>RMD</option></select></td>
+                <td><input type="text" class="form-control d-cause"></td>
+                <td><div class="input-group"><input type="text" class="form-control d-action" id="${id}"><button class="ai-btn" onclick="aiRewrite('${id}')">AI</button></div></td>
+                <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); calcRates()">X</button></td>
             </tr>
         `);
         calcRates();
     }
 
-    // --- 3. PROFESSIONAL PREVIEW ---
-    function showPreview() {
-        const d = {
-            date: document.getElementById('date').value,
-            model: document.getElementById('model').value,
-            input: document.getElementById('inputQty').value,
-            fg: document.getElementById('fgQty').value,
-            fpy: document.getElementById('fpyRate').value,
-            line: document.getElementById('line').value
-        };
-
-        let rows = "";
-        document.querySelectorAll('#prodTable tbody tr').forEach(r => {
-            rows += `<tr>
-                <td>${r.querySelector('.d-name').value}</td>
-                <td>${r.querySelector('.d-qty').value}</td>
-                <td>${r.querySelector('.d-type').value}</td>
-                <td>${r.querySelector('.d-cause').value}</td>
-                <td>${r.querySelector('.d-action').value}</td>
-            </tr>`;
-        });
-
-        const html = `
-            <div class="preview-box">
-                <div class="preview-header">
-                    <img src="${LOGO_URL}" class="preview-logo">
-                    <div class="text-end">
-                        <h4 class="mb-0 text-primary">Production Report</h4>
-                        <small class="text-muted">Generated on: ${new Date().toLocaleDateString()}</small>
-                    </div>
-                </div>
-                <div class="row mb-3">
-                    <div class="col-6">
-                        <strong>Date:</strong> ${d.date}<br>
-                        <strong>Line:</strong> ${d.line}<br>
-                        <strong>Model:</strong> ${d.model}
-                    </div>
-                    <div class="col-6 text-end">
-                        <span class="badge bg-primary badge-custom">Input: ${d.input}</span>
-                        <span class="badge bg-success badge-custom">FG: ${d.fg}</span>
-                        <div class="mt-2 fs-4 fw-bold text-dark">FPY: ${d.fpy}</div>
-                    </div>
-                </div>
-                <h6 class="border-bottom pb-2">Defect Details</h6>
-                <table class="table table-sm table-bordered table-striped">
-                    <thead class="table-dark"><tr><th>Defect</th><th>Qty</th><th>Type</th><th>Cause</th><th>Action</th></tr></thead>
-                    <tbody>${rows || '<tr><td colspan="5" class="text-center">No Defects Reported</td></tr>'}</tbody>
-                </table>
-            </div>
-        `;
-        document.getElementById('prevContent').innerHTML = html;
-        new bootstrap.Modal(document.getElementById('prevModal')).show();
-    }
-
-    // --- 4. SUBMIT & CRUD ---
+    // --- 3. SUBMIT / DELETE / EDIT ---
     function submitData() {
         const btn = document.getElementById('finalBtn');
         btn.innerText = "Sending..."; btn.disabled = true;
@@ -423,8 +251,13 @@
             });
         });
 
+        // Unique ID for New or Existing
+        const recId = document.getElementById('recordId').value || Date.now().toString();
+        const mode = document.getElementById('recordId').value ? 'edit' : 'submit';
+
         const payload = {
-            id: document.getElementById('recordId').value || Date.now().toString(),
+            action: mode,
+            id: recId,
             date: document.getElementById('date').value,
             line: document.getElementById('line').value,
             model: document.getElementById('model').value,
@@ -432,153 +265,162 @@
             fg: document.getElementById('fgQty').value,
             fpy: document.getElementById('fpyRate').value,
             defects: JSON.stringify(defects),
-            // Add PDI fields similarly...
-            action: 'submit' // Tag for backend
+            pdiDetails: {
+                offer: document.getElementById('pdiOffer').value,
+                pass: document.getElementById('pdiPass').value,
+                fail: document.getElementById('pdiFail').value,
+                note: document.getElementById('pdiDetails').value
+            }
         };
 
         fetch(API_URL, {
             method: 'POST', mode: 'no-cors', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         }).then(() => {
-            alert("✅ Saved Successfully!");
-            location.reload();
+            alert("Success!"); location.reload();
         }).catch(e => { alert("Error: "+e); btn.disabled=false; });
     }
 
-    // --- 5. DASHBOARD & EXPORT ---
-    function loadData(type) {
-        if(ALL_DATA.length > 0) { updateProdDash(); return; }
-        fetch(API_URL).then(r=>r.json()).then(d => { ALL_DATA = d; updateProdDash(); });
-    }
-
-    function updateProdDash() {
-        const sDate = document.getElementById('prodStart').value;
-        const eDate = document.getElementById('prodEnd').value;
-        
-        // Filter Data
-        const filtered = ALL_DATA.filter(d => {
-            const dt = d.date || d[0]; // Adjust based on your sheet col index
-            return (!sDate || dt >= sDate) && (!eDate || dt <= eDate);
-        });
-
-        // 1. Fill Table
-        const tbody = document.querySelector('#prodListTable tbody');
-        tbody.innerHTML = "";
-        let totalIn = 0, totalFg = 0, defectsMap = {};
-
-        filtered.forEach(d => {
-            totalIn += (+d.input || 0); totalFg += (+d.fg || 0);
-            
-            // Defect Pareto Logic
-            try {
-                JSON.parse(d.defects || "[]").forEach(def => {
-                    if(!defectsMap[def.name]) defectsMap[def.name] = { qty:0, cause:def.cause, action:def.action };
-                    defectsMap[def.name].qty += (+def.qty);
-                });
-            } catch(e){}
-
-            tbody.innerHTML += `
-                <tr>
-                    <td>${d.date}</td><td>${d.model}</td><td>${d.input}</td><td>${d.fg}</td>
-                    <td><span class="badge bg-${parseFloat(d.fpy)>90?'success':'danger'}">${d.fpy}</span></td>
-                    <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="viewRecord('${d.id}')" title="View"><i class="fas fa-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-dark" onclick="editRecord('${d.id}')" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteRecord('${d.id}')" title="Delete"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        // 2. Update KPIs
-        document.getElementById('kpi-vol').innerText = totalIn;
-        document.getElementById('kpi-fpy').innerText = totalIn ? ((totalFg/totalIn)*100).toFixed(1)+"%" : "0%";
-
-        // 3. Update Charts (Simplified for brevity)
-        renderCharts(filtered, defectsMap);
-        
-        // 4. Update Top Issue Table
-        const issuesTable = document.querySelector('#topIssuesTable tbody');
-        issuesTable.innerHTML = "";
-        Object.entries(defectsMap).sort((a,b)=>b[1].qty - a[1].qty).slice(0,5).forEach(([k,v]) => {
-            issuesTable.innerHTML += `<tr><td>${k}</td><td>${v.qty}</td><td>${v.cause}</td><td>${v.action}</td></tr>`;
-        });
-    }
-
-    function renderCharts(data, defectsMap) {
-        // Line Chart
-        const ctx1 = document.getElementById('prodTrendChart');
-        if(window.myChart1) window.myChart1.destroy();
-        window.myChart1 = new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: data.map(d=>d.date),
-                datasets: [{ label: 'FPY %', data: data.map(d=>parseFloat(d.fpy)), borderColor: '#1cc88a', tension: 0.3 }]
-            }
-        });
-
-        // Pareto Chart
-        const sorted = Object.entries(defectsMap).sort((a,b)=>b[1].qty - a[1].qty).slice(0,5);
-        const ctx2 = document.getElementById('prodParetoChart');
-        if(window.myChart2) window.myChart2.destroy();
-        window.myChart2 = new Chart(ctx2, {
-            type: 'bar',
-            data: {
-                labels: sorted.map(x=>x[0]),
-                datasets: [{ label: 'Qty', data: sorted.map(x=>x[1].qty), backgroundColor: '#4e73df' }]
-            }
-        });
-    }
-
-    // --- EXPORT TO EXCEL ---
-    function exportToExcel(type) {
-        const table = document.getElementById(type === 'PROD' ? 'prodListTable' : 'pdiListTable'); // Use filtered data logic ideally
-        const wb = XLSX.utils.table_to_book(table, {sheet: "Sheet1"});
-        XLSX.writeFile(wb, `Califonix_Report_${type}.xlsx`);
-    }
-
-    // --- CRUD OPS ---
     function deleteRecord(id) {
-        if(!confirm("Are you sure you want to DELETE this record?")) return;
+        if(!confirm("Delete this record?")) return;
         fetch(API_URL, {
             method: 'POST', mode: 'no-cors',
             body: JSON.stringify({ action: 'delete', id: id })
-        }).then(() => { alert("Record Deleted!"); loadData('PROD'); });
+        }).then(() => { alert("Deleted! Refreshing..."); loadData(); });
     }
 
-    function editRecord(id) {
-        const rec = ALL_DATA.find(r => r.id == id);
-        if(!rec) return;
-        document.getElementById('recordId').value = rec.id;
-        document.getElementById('date').value = rec.date;
-        document.getElementById('model').value = rec.model;
-        document.getElementById('inputQty').value = rec.input;
-        // Trigger tab switch
+    // --- 4. DASHBOARD & PREVIEW ---
+    function showPreview() {
+        const d = {
+            date: document.getElementById('date').value,
+            model: document.getElementById('model').value,
+            input: document.getElementById('inputQty').value,
+            fg: document.getElementById('fgQty').value,
+            fpy: document.getElementById('fpyRate').value
+        };
+        let rows = "";
+        document.querySelectorAll('#prodTable tbody tr').forEach(r => {
+            rows += `<tr><td>${r.querySelector('.d-name').value}</td><td>${r.querySelector('.d-qty').value}</td><td>${r.querySelector('.d-cause').value}</td><td>${r.querySelector('.d-action').value}</td></tr>`;
+        });
+
+        document.getElementById('prevContent').innerHTML = `
+            <div class="preview-box">
+                <div class="d-flex justify-content-between border-bottom pb-2 mb-3">
+                    <img src="${LOGO_URL}" height="50">
+                    <div class="text-end"><h4>Production Report</h4><small>${d.date}</small></div>
+                </div>
+                <div class="row text-center mb-3">
+                    <div class="col border-end"><h6>Input</h6><h4>${d.input}</h4></div>
+                    <div class="col border-end"><h6>FG</h6><h4 class="text-success">${d.fg}</h4></div>
+                    <div class="col"><h6>FPY</h6><h4 class="text-primary">${d.fpy}</h4></div>
+                </div>
+                <h6>Defect Details</h6>
+                <table class="table table-sm table-striped"><thead><tr><th>Issue</th><th>Qty</th><th>Cause</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table>
+            </div>
+        `;
+        new bootstrap.Modal(document.getElementById('prevModal')).show();
+    }
+
+    // --- 5. LOAD DATA & CHART ---
+    function loadData() {
+        fetch(API_URL).then(r => r.json()).then(data => {
+            ALL_DATA = data;
+            updateDash();
+        });
+    }
+
+    function updateDash() {
+        const sDate = document.getElementById('dashStart').value;
+        const eDate = document.getElementById('dashEnd').value;
+        
+        // Filter logic
+        const filtered = ALL_DATA.filter(d => {
+            let dt = d.date.split('T')[0];
+            return (!sDate || dt >= sDate) && (!eDate || dt <= eDate);
+        });
+
+        // Populate Table
+        const tbody = document.querySelector('#recTable tbody');
+        tbody.innerHTML = "";
+        let totIn = 0, totDef = 0, totFg = 0;
+        let defectMap = {};
+
+        filtered.forEach(d => {
+            totIn += (+d.input || 0);
+            totFg += (+d.fg || 0);
+            
+            // Parse Defects for Chart
+            try {
+                JSON.parse(d.defects).forEach(def => {
+                    totDef += (+def.qty);
+                    defectMap[def.name] = (defectMap[def.name] || 0) + (+def.qty);
+                });
+            } catch(e) {}
+
+            tbody.innerHTML += `<tr>
+                <td>${d.date.substring(0,10)}</td>
+                <td>${d.model}</td>
+                <td>${d.input}</td>
+                <td>${d.fg}</td>
+                <td>${d.fpy}</td>
+                <td>
+                   <button class="btn btn-sm btn-info text-white" onclick="editRec('${d.id}')"><i class="fas fa-edit"></i></button>
+                   <button class="btn btn-sm btn-danger" onclick="deleteRecord('${d.id}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+
+        // KPIs
+        document.getElementById('k-input').innerText = totIn;
+        document.getElementById('k-defects').innerText = totDef;
+        document.getElementById('k-fpy').innerText = totIn ? ((totFg/totIn)*100).toFixed(1)+"%" : "0%";
+
+        // Charts
+        renderCharts(filtered, defectMap);
+    }
+
+    function editRec(id) {
+        const r = ALL_DATA.find(x => x.id == id);
+        if(!r) return;
+        document.getElementById('recordId').value = r.id;
+        document.getElementById('date').value = r.date.substring(0,10);
+        document.getElementById('model').value = r.model;
+        document.getElementById('inputQty').value = r.input;
+        // Trigger Tab
         new bootstrap.Tab(document.querySelector('button[data-bs-target="#entryTab"]')).show();
-        calcRates(); // Recalculate based on loaded values
-        alert("Record loaded in Data Entry tab. Make changes and click Submit.");
+        calcRates();
+        alert("Record Loaded. Edit and Click Submit.");
     }
-    
-    function viewRecord(id) {
-        const rec = ALL_DATA.find(r => r.id == id);
-        if(!rec) return;
-        let html = `<ul class="list-group">
-            <li class="list-group-item"><b>Date:</b> ${rec.date}</li>
-            <li class="list-group-item"><b>Model:</b> ${rec.model}</li>
-            <li class="list-group-item"><b>FPY:</b> ${rec.fpy}</li>
-            <li class="list-group-item"><b>Defects:</b> ${rec.defects}</li>
-        </ul>`;
-        document.getElementById('viewContent').innerHTML = html;
-        new bootstrap.Modal(document.getElementById('viewModal')).show();
+
+    let c1, c2;
+    function renderCharts(rows, defs) {
+        if(c1) c1.destroy();
+        c1 = new Chart(document.getElementById('chartTrend'), {
+            type: 'line',
+            data: {
+                labels: rows.map(r => r.date.substring(0,10)),
+                datasets: [{ label: 'FPY %', data: rows.map(r => parseFloat(r.fpy)), borderColor: 'green', tension:0.3 }]
+            }
+        });
+
+        const sorted = Object.entries(defs).sort((a,b)=>b[1]-a[1]).slice(0,5);
+        if(c2) c2.destroy();
+        c2 = new Chart(document.getElementById('chartPareto'), {
+            type: 'bar',
+            data: {
+                labels: sorted.map(x=>x[0]),
+                datasets: [{ label: 'Qty', data: sorted.map(x=>x[1]), backgroundColor: 'blue' }]
+            }
+        });
     }
-    
-    // Toggle PDI and other helpers remain same...
+
+    function exportExcel() {
+        const wb = XLSX.utils.table_to_book(document.getElementById('recTable'), {sheet:"Log"});
+        XLSX.writeFile(wb, "Califonix_Report.xlsx");
+    }
+
     function togglePDI() { document.getElementById('pdiSection').classList.toggle('hidden', !document.getElementById('pdiToggle').checked); }
-    function calcPDI() { 
-        const off = +document.getElementById('pdiOffer').value||0, pass = +document.getElementById('pdiPass').value||0;
-        document.getElementById('pdiFail').value = off-pass;
-        document.getElementById('pdiRate').value = off ? ((pass/off)*100).toFixed(1)+"%" : "0%";
-    }
+    function calcPDI() { document.getElementById('pdiFail').value = (+document.getElementById('pdiOffer').value||0) - (+document.getElementById('pdiPass').value||0); }
     function resetForm() { document.getElementById('mainForm').reset(); document.querySelector('#prodTable tbody').innerHTML=''; }
 
 </script>
