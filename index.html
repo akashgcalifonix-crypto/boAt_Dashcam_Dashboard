@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Califonix_Dashcam_Dashboard  </title>
+    <title>Califonix Smart Dashboard</title>
     <!-- CSS Libraries -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -47,12 +47,12 @@
     <div class="d-flex align-items-center">
         <!-- LOGO HERE -->
         <img id="navLogo" src="" style="height: 45px;" class="me-3" alt="Logo">
-        <h5 class="text-primary fw-bold mb-0">PQC & PDI System</h5>
+        <h5 class="text-primary fw-bold mb-0">Production & PDI System</h5>
     </div>
     <div class="ms-auto">
         <ul class="nav nav-tabs border-0" id="mainTab" role="tablist">
             <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#entryTab">📝 Data Entry</button></li>
-            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prodDashTab" onclick="loadData('PROD')">🏭 PQC Dashboard</button></li>
+            <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#prodDashTab" onclick="loadData('PROD')">🏭 Production Dashboard</button></li>
             <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pdiDashTab" onclick="loadData('PDI')">🛡️ PDI Dashboard</button></li>
         </ul>
     </div>
@@ -301,9 +301,9 @@
 
 <script>
     // --- CONFIGURATION ---
-    const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png"; //
-    const API_URL = "https://script.google.com/macros/s/AKfycbzEgdlCLOOe0ZqL-A5UUcGiWxGKOuepl76a2S98XhSVHJQolj44sKmkc67C4ffqDsTnuw/exec"; // 
-    const GEMINI_API_KEY = "AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc"; //
+    const LOGO_URL = "https://i.postimg.cc/5y7SN4xc/logo.png"; // यहाँ अपनी लोगो इमेज का लिंक डालें
+    const API_URL = "https://script.google.com/macros/s/AKfycbzEgdlCLOOe0ZqL-A5UUcGiWxGKOuepl76a2S98XhSVHJQolj44sKmkc67C4ffqDsTnuw/exec"; // आपकी Script URL
+    const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; // 🔴 For AI Paste API Key (Google AI Studio )
 
     document.getElementById('navLogo').src = LOGO_URL;
     document.getElementById('date').valueAsDate = new Date();
@@ -312,7 +312,7 @@
 
     // --- 1. AI REWRITE FUNCTION ---
     async function aiRewrite(inputId) {
-        if(!GEMINI_API_KEY) { alert("AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc."); return; }
+        if(!GEMINI_API_KEY) { alert("Please set the GEMINI_API_KEY in the code first."); return; }
         
         const inputField = document.getElementById(inputId);
         const originalText = inputField.value;
@@ -322,7 +322,7 @@
         inputField.disabled = true;
 
         const prompt = `Rewrite this manufacturing action plan to be professional, clear, and concise in English: "${originalText}"`;
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${AIzaSyAbJOWtgA_nXh9lNiMGFT-5haaTL5g0xWc}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`;
 
         try {
             const response = await fetch(url, {
@@ -618,7 +618,3 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
-
-
-
