@@ -49,9 +49,12 @@
   
   /* Modal & Preview */
   .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-  .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 800px; border-radius: 10px; overflow: hidden; }
+  .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 850px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-  .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background:white; }
+  
+  /* PREVIEW BODY - Adjusted for scroll */
+  .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background: #ffffff; } 
+  
   .preview-footer { padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
   
   .doc-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -75,8 +78,8 @@
 <div class="container">
   <!-- Header -->
   <div class="header-box">
-      <!-- UPDATED LOGO: Removed external link to fix PDF blank issue -->
-      <h2 style="color:#0d6efd; margin:0; font-weight:900; letter-spacing:-1px;">CALIF<span style="color:#dc3545">O</span>NIX</h2>
+      <!-- Added crossorigin="anonymous" to fix CORS issue in PDF -->
+      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="logo" alt="Califonix" crossorigin="anonymous">
       <div>
           <h3 style="margin:0; text-align:right;">Production & Quality System</h3>
           <small style="color:#777;">Smart Manufacturing Dashboard</small>
@@ -227,9 +230,8 @@
             <h4 style="margin:0;">📄 Confirm Submission</h4>
             <span style="cursor:pointer; font-size:20px;" onclick="closeModal()">✖</span>
         </div>
-        <!-- IMPORTANT: The ID prevBody is the target -->
         <div class="preview-body" id="prevBody">
-            <!-- Content will be injected here -->
+            <!-- Content injected here -->
         </div>
         <div class="preview-footer">
             <button class="btn-sm" style="background:#17a2b8; font-size:14px; padding:10px 20px;" onclick="downloadPreviewPDF(event)"><i class="fas fa-file-pdf"></i> Download PDF</button>
@@ -245,16 +247,13 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// IMPORTANT: Use your correct Apps Script URL
+// 🔴 Replace with YOUR Deployment URL
 const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; 
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
 let allData = [];
 let actionPlanMap = {}; 
 let top3Chart = null; 
-
-// Logo Base64 (Using a text based logo in HTML now to prevent CORS issues)
-// If you must use an image, convert your image to Base64 online and replace the src.
 
 google.charts.load('current', {'packages':['corechart']});
 
@@ -285,6 +284,7 @@ async function loadData() {
     
     let kpi = { prod: 0, rmdD: 0, procD: 0 };
     let models = new Set();
+    
     let groupedData = {};
 
     allData.forEach((r) => {
@@ -510,10 +510,10 @@ function showPreview() {
     let chartImg = (top3Chart && aggregated.length > 0) ? `<div style="text-align:center; margin:10px 0; border:1px solid #eee; padding:5px;"><img src="${top3Chart.getImageURI()}" style="width:100%; max-width:400px;"></div>` : "";
 
     let html = `
-        <div style="padding:30px; background:white; font-family:sans-serif;">
+        <div style="padding:20px; background:white;">
             <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
-                <!-- Text based logo to ensure PDF works -->
-                <h2 style="color:#0d6efd; margin:0; margin-right:15px; font-weight:900;">CALIF<span style="color:#dc3545">O</span>NIX</h2>
+                <!-- Crossorigin Added Here -->
+                <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;" crossorigin="anonymous">
                 <div><h3 style="margin:0; color:#007bff;">Production Report</h3><small>${d.date}</small></div>
             </div>
             
@@ -561,52 +561,51 @@ function showPreview() {
 }
 
 // ---------------------------------------------
-// FIXED PDF DOWNLOAD FUNCTION (CLONE METHOD)
-// This method creates a temporary clone of the content to ignore scrollbars
+// FIXED PDF DOWNLOAD FUNCTION (BLANK PAGE FIX)
 // ---------------------------------------------
 function downloadPreviewPDF(event) {
+    // Target Element
+    const element = document.getElementById('prevBody');
+    
+    // Save original styles to revert later
+    const originalMaxHeight = element.style.maxHeight;
+    const originalOverflow = element.style.overflowY;
+
+    // TEMPORARY FIX: Remove scroll constraints for PDF generation
+    element.style.maxHeight = 'none';
+    element.style.overflowY = 'visible';
+
+    // Button UI
     const btn = event.currentTarget;
     const oldText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
     btn.disabled = true;
 
-    // 1. Get HTML from the Preview
-    const content = document.getElementById('prevBody').innerHTML;
-
-    // 2. Create a temporary container for PDF generation
-    // This removes the "max-height" and "scroll" limitations
-    const pdfContainer = document.createElement('div');
-    pdfContainer.innerHTML = content;
-    
-    // Style it to look like A4 page
-    pdfContainer.style.width = '800px'; 
-    pdfContainer.style.background = 'white';
-    pdfContainer.style.position = 'absolute';
-    pdfContainer.style.top = '-9999px'; // Hide offscreen
-    pdfContainer.style.left = '0';
-    pdfContainer.style.zIndex = '-1';
-    
-    document.body.appendChild(pdfContainer);
-
+    // PDF Config
     const opt = {
         margin:       0.3,
         filename:     'Production_Report.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf().set(opt).from(pdfContainer).save()
+    // Generate
+    html2pdf().set(opt).from(element).save()
         .then(() => {
-            document.body.removeChild(pdfContainer); // Clean up
+            // Restore UI and Styles
             btn.innerHTML = oldText;
             btn.disabled = false;
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflowY = originalOverflow;
         })
         .catch(err => {
             console.error(err);
             alert("Error creating PDF");
             btn.innerHTML = oldText;
             btn.disabled = false;
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflowY = originalOverflow;
         });
 }
 
