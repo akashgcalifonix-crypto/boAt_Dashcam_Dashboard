@@ -29,19 +29,17 @@
   input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
   .section-card { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
   
-  /* Defect Table - WITH RATE COLUMN */
-  .defect-row { 
-      display: grid; 
-      grid-template-columns: 2fr 1fr 1fr 0.8fr 2fr 1fr 0.5fr; 
-      gap: 10px; 
-      align-items: end; 
-      background: #f9f9f9; 
-      padding: 10px; 
-      border-radius: 6px; 
-      margin-bottom: 10px; 
-      border: 1px solid #eee; 
-  }
+  /* Defect Table */
+  .defect-row { display: grid; grid-template-columns: 2fr 1fr 1fr 0.8fr 2fr 1fr 0.5fr; gap: 10px; align-items: end; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #eee; }
   
+  /* Top 3 Section Style */
+  .top3-box { background: #f1f8ff; border: 1px dashed #0d6efd; padding: 20px; border-radius: 10px; margin-top: 20px; display: none; }
+  .top3-grid { display: flex; gap: 20px; flex-wrap: wrap; }
+  .top3-table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
+  .top3-table th { background: #333; color: white; padding: 8px; text-align: left; }
+  .top3-table td { border-bottom: 1px solid #ddd; padding: 8px; vertical-align: middle; }
+  .action-input { border: 1px solid #28a745; background: #fafffb; }
+
   /* Buttons */
   .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; color: white; }
   .btn-red { background: #dc3545; } .btn-ai { background: linear-gradient(135deg, #6f42c1, #8e44ad); }
@@ -154,7 +152,21 @@
           </div>
       </div>
 
-      <button class="btn-main" onclick="showPreview()">👁️ Preview & Submit</button>
+      <!-- NEW TOP 3 SECTION -->
+      <div id="top3_container" class="top3-box">
+          <h4 style="margin-top:0; color:#0d6efd;"><i class="fas fa-chart-pie"></i> Top 3 Defects & Action Plan (Auto-Calculated)</h4>
+          <div class="top3-grid">
+              <div style="flex:1; min-width:300px; height:250px; background:white; padding:5px; border-radius:5px;" id="top3_chart"></div>
+              <div style="flex:1.5; min-width:350px;">
+                  <table class="top3-table">
+                      <thead><tr><th>Rank</th><th>Defect</th><th>Qty</th><th>Rate %</th><th>Analysis</th><th>Action Plan (Manual)</th></tr></thead>
+                      <tbody id="top3_tbody"></tbody>
+                  </table>
+              </div>
+          </div>
+      </div>
+
+      <button class="btn-main" style="margin-top:20px;" onclick="showPreview()">👁️ Preview & Submit</button>
   </div>
 
   <!-- 3. REPORT TAB -->
@@ -236,10 +248,13 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const API_URL = "https://script.google.com/macros/s/AKfycbwRW5u6DU6dRMwyRnyNz6Tqo4p_CjRYRfISIeumqnG1i6kaO81kJSrYGRHy-Hec4Wi1AA/exec"; // 🔴 यहाँ अपना नया Apps Script URL डालें
+const API_URL = "https://script.google.com/macros/s/AKfycbwRW5u6DU6dRMwyRnyNz6Tqo4p_CjRYRfISIeumqnG1i6kaO81kJSrYGRHy-Hec4Wi1AA/exec"; // 🔴 यहाँ अपना URL डालें
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
 let allData = [];
+// Store Action Plans temporarily while typing
+let actionPlanMap = {}; 
+
 google.charts.load('current', {'packages':['corechart']});
 
 window.onload = () => {
@@ -262,13 +277,12 @@ function switchTab(btn, id){
 function addDefectRow(data=null){
     const div = document.createElement('div');
     div.className = 'defect-row';
-    // Rate Column added
     div.innerHTML = `
-        <div><label>Defect Name</label><input type="text" class="d-name" placeholder="Name"></div>
+        <div><label>Defect Name</label><input type="text" class="d-name" placeholder="Name" oninput="calcStats()"></div>
         <div><label>Type</label><select class="d-type" onchange="calcStats()"><option>Process</option><option>RMD</option></select></div>
         <div><label>Qty</label><input type="number" class="d-qty" oninput="calcStats()" value="0"></div>
         <div><label>Rate %</label><input type="text" class="d-rate" readonly style="background:#eee; font-weight:bold; text-align:center;"></div>
-        <div><label>Analysis</label><div style="display:flex;"><input class="d-ana"><button class="btn-sm btn-ai" onclick="aiFix(this)">AI</button></div></div>
+        <div><label>Analysis</label><div style="display:flex;"><input class="d-ana" oninput="calcStats()"><button class="btn-sm btn-ai" onclick="aiFix(this)">AI</button></div></div>
         <div><label>Img</label><input type="file" accept="image/*"></div>
         <div><label>&nbsp;</label><button class="btn-red btn-sm" onclick="this.closest('.defect-row').remove(); calcStats()">X</button></div>
     `;
@@ -278,27 +292,90 @@ function addDefectRow(data=null){
         div.querySelector('.d-type').value = data.type;
         div.querySelector('.d-qty').value = data.qty;
         div.querySelector('.d-ana').value = data.ana;
+        // Pre-fill action plan if exists
+        if(data.action) actionPlanMap[data.name] = data.action;
     }
 }
 
 function calcStats(){
     let inp = +document.getElementById('e_input').value || 0;
     let rmdSum = 0, procSum = 0;
+    let defectList = [];
     
     document.querySelectorAll('.defect-row').forEach(row => {
+        let name = row.querySelector('.d-name').value;
         let q = +row.querySelector('.d-qty').value || 0;
         let t = row.querySelector('.d-type').value;
+        let ana = row.querySelector('.d-ana').value;
         
-        // Calculate Row Rate
         let rate = inp ? ((q/inp)*100).toFixed(2)+"%" : "0%";
         row.querySelector('.d-rate').value = rate;
+
+        if(q > 0 && name) {
+            defectList.push({ name, qty: q, rate, ana, type:t });
+        }
 
         if(t === 'RMD') rmdSum += q; else procSum += q;
     });
     
     document.getElementById('disp_rmd').innerText = inp ? ((rmdSum/inp)*100).toFixed(2)+"%" : "0%";
     document.getElementById('disp_proc').innerText = inp ? ((procSum/inp)*100).toFixed(2)+"%" : "0%";
-    return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText };
+    
+    renderTop3(defectList, inp);
+
+    return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText, defectList };
+}
+
+// ==========================================
+// TOP 3 RENDER LOGIC
+// ==========================================
+function updateActionMap(input, defName) {
+    actionPlanMap[defName] = input.value;
+}
+
+function renderTop3(list, totalInput) {
+    let container = document.getElementById('top3_container');
+    if(list.length === 0) { container.style.display = 'none'; return; }
+    container.style.display = 'block';
+
+    // Sort Descending by Qty
+    list.sort((a,b) => b.qty - a.qty);
+    let top3 = list.slice(0, 3);
+
+    // 1. Draw Chart
+    let chartData = [['Defect', 'Qty', { role: 'style' }]];
+    let colors = ['#dc3545', '#fd7e14', '#ffc107'];
+    top3.forEach((d, i) => {
+        chartData.push([d.name, d.qty, colors[i] || '#0d6efd']);
+    });
+    
+    let wrapper = new google.visualization.ColumnChart(document.getElementById('top3_chart'));
+    wrapper.draw(google.visualization.arrayToDataTable(chartData), {
+        title: 'Top 3 Defects Trend',
+        legend: { position: "none" },
+        chartArea: {width:'80%', height:'70%'},
+        vAxis: { minValue: 0 }
+    });
+
+    // 2. Render Table
+    let tbody = document.getElementById('top3_tbody');
+    tbody.innerHTML = "";
+    
+    top3.forEach((d, i) => {
+        let existingAction = actionPlanMap[d.name] || "";
+        tbody.innerHTML += `
+            <tr>
+                <td><span class="badge" style="background:#333; color:white;">#${i+1}</span></td>
+                <td><b>${d.name}</b></td>
+                <td>${d.qty}</td>
+                <td style="color:red; font-weight:bold;">${d.rate}</td>
+                <td><small>${d.ana || '-'}</small></td>
+                <td><input type="text" class="action-input" placeholder="Enter Action Plan..." 
+                    value="${existingAction}" oninput="updateActionMap(this, '${d.name}')">
+                </td>
+            </tr>
+        `;
+    });
 }
 
 // ==========================================
@@ -315,6 +392,7 @@ async function aiFix(btn) {
         });
         let j = await res.json();
         btn.previousElementSibling.value = j.candidates[0].content.parts[0].text;
+        calcStats(); // Update analysis in Top 3 table
     } catch(e) { alert("AI Error"); }
     btn.innerText = "AI";
 }
@@ -330,17 +408,24 @@ function showPreview() {
         procRate: stats.procRate
     };
     
-    // Rows
     let rows = "";
     document.querySelectorAll('.defect-row').forEach(r => {
+        let name = r.querySelector('.d-name').value;
+        let qty = r.querySelector('.d-qty').value;
         let type = r.querySelector('.d-type').value;
+        let rate = r.querySelector('.d-rate').value;
+        let ana = r.querySelector('.d-ana').value;
+        // Get Action Plan from Map
+        let act = actionPlanMap[name] || "";
+        
         let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
         rows += `<tr>
-            <td>${r.querySelector('.d-name').value}</td>
+            <td>${name}</td>
             <td><span class="badge ${cls}">${type}</span></td>
-            <td>${r.querySelector('.d-qty').value}</td>
-            <td style="font-weight:bold;">${r.querySelector('.d-rate').value}</td>
-            <td>${r.querySelector('.d-ana').value}</td>
+            <td>${qty}</td>
+            <td style="font-weight:bold;">${rate}</td>
+            <td>${ana}</td>
+            <td style="color:green; font-style:italic;">${act}</td>
         </tr>`;
     });
 
@@ -361,8 +446,8 @@ function showPreview() {
             </div>
         </div>
         <table class="doc-table">
-            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="5" style="text-align:center">No Defects</td></tr>'}</tbody>
+            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th><th>Action Plan</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="6" style="text-align:center">No Defects</td></tr>'}</tbody>
         </table>
     `;
     document.getElementById('prevBody').innerHTML = html;
@@ -374,8 +459,17 @@ async function saveData() {
     document.getElementById('loader').style.display='block'; closeModal();
     let stats = calcStats();
     let defects = [];
+    
     document.querySelectorAll('.defect-row').forEach(r => {
-        defects.push({ name: r.querySelector('.d-name').value, type: r.querySelector('.d-type').value, qty: r.querySelector('.d-qty').value, ana: r.querySelector('.d-ana').value });
+        let name = r.querySelector('.d-name').value;
+        // Merge Action Plan into saved data
+        defects.push({ 
+            name: name, 
+            type: r.querySelector('.d-type').value, 
+            qty: r.querySelector('.d-qty').value, 
+            ana: r.querySelector('.d-ana').value,
+            action: actionPlanMap[name] || "" 
+        });
     });
 
     let payload = {
@@ -400,14 +494,13 @@ async function saveData() {
 }
 
 // ==========================================
-// DASHBOARD & REPORTS (NO PDI)
+// DASHBOARD & REPORTS
 // ==========================================
 async function loadData() {
     let res = await fetch(API_URL);
     let j = await res.json();
     allData = j.data;
     
-    // Populate Dashboard Table
     let tbody = document.getElementById('dash_table');
     tbody.innerHTML = "";
     let kpi = { prod:0, rmdD:0, procD:0 };
@@ -416,7 +509,6 @@ async function loadData() {
     allData.forEach((r, i) => {
         if(r[0] < document.getElementById('d_from').value) return;
         
-        // 0:Date, 1:Line, 2:Model, 3:Input, 4:TotDef, 5:RMD%, 6:Proc%
         let inp = +r[3]||0;
         kpi.prod += inp;
         
@@ -432,12 +524,10 @@ async function loadData() {
         </tr>`;
     });
 
-    // Update KPIs
     document.getElementById('k_prod').innerText = kpi.prod;
     document.getElementById('k_rmd').innerText = kpi.prod ? (kpi.rmdD/kpi.prod*100).toFixed(2)+"%" : "0%";
     document.getElementById('k_proc').innerText = kpi.prod ? (kpi.procD/kpi.prod*100).toFixed(2)+"%" : "0%";
 
-    // Populate Report Model Dropdown
     let sel = document.getElementById('m_select');
     sel.innerHTML = "";
     models.forEach(m => sel.innerHTML += `<option>${m}</option>`);
@@ -453,7 +543,10 @@ function edit(i, r) {
     document.getElementById('e_prep').value = r[7];
     
     document.getElementById('defect_wrapper').innerHTML = "";
-    try { JSON.parse(r[8]).forEach(d => addDefectRow(d)); } catch(e){}
+    actionPlanMap = {}; // Reset map
+    try { 
+        JSON.parse(r[8]).forEach(d => addDefectRow(d)); 
+    } catch(e){}
     calcStats();
 }
 
@@ -464,16 +557,13 @@ function genReport(mode) {
     
     document.getElementById(area).style.display = 'block';
     
-    // Filter Data
     let filtered = allData.filter(r => r[0] >= from && (!targetModel || r[2] === targetModel));
     
-    // Aggregation
     let totIn=0, totDef=0;
     let dateMap = {}, defectMap = {};
 
     filtered.forEach(r => {
         let inp = +r[3]||0; totIn += inp; totDef += (+r[4]||0);
-        
         let d = r[0];
         if(!dateMap[d]) dateMap[d] = {i:0, d:0};
         dateMap[d].i += inp; dateMap[d].d += (+r[4]||0);
@@ -487,7 +577,6 @@ function genReport(mode) {
         document.getElementById('r_inp').innerText = totIn;
         document.getElementById('r_def').innerText = totDef;
         document.getElementById('r_proc').innerText = totIn ? (totDef/totIn*100).toFixed(2)+"%" : "0%";
-        
         drawTrend(dateMap, 'chart_trend');
         drawPareto(defectMap, 'chart_pareto');
         listTopDefects(defectMap, 'r_list', totIn);
@@ -529,7 +618,7 @@ function dlPdf(id, name) {
     const el = document.getElementById(id);
     html2pdf().set({margin:0.2, filename:name+'.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2}, jsPDF:{unit:'in', format:'letter', orientation:'portrait'}}).from(el).save();
 }
-function resetForm() { document.getElementById('edit_index').value=""; document.getElementById('defect_wrapper').innerHTML=""; addDefectRow(); }
+function resetForm() { document.getElementById('edit_index').value=""; document.getElementById('defect_wrapper').innerHTML=""; actionPlanMap={}; addDefectRow(); }
 </script>
 </body>
 </html>
