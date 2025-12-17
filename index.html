@@ -29,8 +29,19 @@
   input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
   .section-card { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
   
-  /* Defect Table */
-  .defect-row { display: grid; grid-template-columns: 2fr 1fr 1fr 2fr 1fr 0.5fr; gap: 10px; align-items: end; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #eee; }
+  /* Defect Table - UPDATED COLUMN LAYOUT */
+  .defect-row { 
+      display: grid; 
+      /* Added a column for Rate (0.8fr) */
+      grid-template-columns: 2fr 1fr 1fr 0.8fr 2fr 1fr 0.5fr; 
+      gap: 10px; 
+      align-items: end; 
+      background: #f9f9f9; 
+      padding: 10px; 
+      border-radius: 6px; 
+      margin-bottom: 10px; 
+      border: 1px solid #eee; 
+  }
   
   /* Buttons */
   .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 4px; border: none; cursor: pointer; color: white; }
@@ -270,10 +281,12 @@ function switchTab(btn, id){
 function addDefectRow(data=null){
     const div = document.createElement('div');
     div.className = 'defect-row';
+    // Added RATE column input
     div.innerHTML = `
         <div><label>Defect Name</label><input type="text" class="d-name" placeholder="Name"></div>
         <div><label>Type</label><select class="d-type" onchange="calcStats()"><option>Process</option><option>RMD</option></select></div>
         <div><label>Qty</label><input type="number" class="d-qty" oninput="calcStats()" value="0"></div>
+        <div><label>Rate %</label><input type="text" class="d-rate" readonly style="background:#eee; font-weight:bold; text-align:center;"></div>
         <div><label>Analysis</label><div style="display:flex;"><input class="d-ana"><button class="btn-sm btn-ai" onclick="aiFix(this)">AI</button></div></div>
         <div><label>Img</label><input type="file" accept="image/*"></div>
         <div><label>&nbsp;</label><button class="btn-red btn-sm" onclick="this.closest('.defect-row').remove(); calcStats()">X</button></div>
@@ -294,6 +307,11 @@ function calcStats(){
     document.querySelectorAll('.defect-row').forEach(row => {
         let q = +row.querySelector('.d-qty').value || 0;
         let t = row.querySelector('.d-type').value;
+        
+        // Calculate Row Rate
+        let rate = inp ? ((q/inp)*100).toFixed(2)+"%" : "0%";
+        row.querySelector('.d-rate').value = rate;
+
         if(t === 'RMD') rmdSum += q; else procSum += q;
     });
     
@@ -350,7 +368,14 @@ function showPreview() {
     document.querySelectorAll('.defect-row').forEach(r => {
         let type = r.querySelector('.d-type').value;
         let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
-        rows += `<tr><td>${r.querySelector('.d-name').value}</td><td><span class="badge ${cls}">${type}</span></td><td>${r.querySelector('.d-qty').value}</td><td>${r.querySelector('.d-ana').value}</td></tr>`;
+        // Added Rate column to Preview
+        rows += `<tr>
+            <td>${r.querySelector('.d-name').value}</td>
+            <td><span class="badge ${cls}">${type}</span></td>
+            <td>${r.querySelector('.d-qty').value}</td>
+            <td style="font-weight:bold;">${r.querySelector('.d-rate').value}</td>
+            <td>${r.querySelector('.d-ana').value}</td>
+        </tr>`;
     });
 
     let html = `
@@ -371,8 +396,8 @@ function showPreview() {
             </div>
         </div>
         <table class="doc-table">
-            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Analysis</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="4" style="text-align:center">No Defects</td></tr>'}</tbody>
+            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th></tr></thead>
+            <tbody>${rows || '<tr><td colspan="5" style="text-align:center">No Defects</td></tr>'}</tbody>
         </table>
     `;
     document.getElementById('prevBody').innerHTML = html;
@@ -414,7 +439,7 @@ async function saveData() {
 }
 
 // ==========================================
-// DASHBOARD & REPORTS (FIXED)
+// DASHBOARD & REPORTS
 // ==========================================
 async function loadData() {
     let res = await fetch(API_URL);
@@ -434,7 +459,6 @@ async function loadData() {
         let inp = +r[3]||0, pIn = +r[9]||0, pF = +r[11]||0;
         kpi.prod += inp; kpi.pdiI += pIn; kpi.pdiF += pF;
         
-        // Back calculation for KPI totals roughly
         let rmdR = parseFloat(r[5])||0; let procR = parseFloat(r[6])||0;
         kpi.rmdD += (inp * rmdR / 100);
         kpi.procD += (inp * procR / 100);
@@ -515,7 +539,6 @@ function genReport(mode) {
         document.getElementById('r_proc').innerText = totIn ? (totDef/totIn*100).toFixed(2)+"%" : "0%";
         document.getElementById('r_pdi').innerText = pdiI ? (pdiF/pdiI*100).toFixed(2)+"%" : "0%";
         
-        // Charts
         drawTrend(dateMap, 'chart_trend');
         drawPareto(defectMap, 'chart_pareto');
         listTopDefects(defectMap, 'r_list', totIn);
