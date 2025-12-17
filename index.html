@@ -29,10 +29,9 @@
   input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
   .section-card { background: #fff; border: 1px solid #eee; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
   
-  /* Defect Table - UPDATED COLUMN LAYOUT */
+  /* Defect Table - WITH RATE COLUMN */
   .defect-row { 
       display: grid; 
-      /* Added a column for Rate (0.8fr) */
       grid-template-columns: 2fr 1fr 1fr 0.8fr 2fr 1fr 0.5fr; 
       gap: 10px; 
       align-items: end; 
@@ -108,14 +107,13 @@
           <div class="kpi-card" style="border-color: #28a745;"><div>Total Production</div><div class="kpi-val" id="k_prod">0</div></div>
           <div class="kpi-card" style="border-color: #ffc107;"><div>RMD Rejection</div><div class="kpi-val" id="k_rmd" style="color:#b38600">0%</div></div>
           <div class="kpi-card" style="border-color: #dc3545;"><div>Process Rejection</div><div class="kpi-val" id="k_proc" style="color:#dc3545">0%</div></div>
-          <div class="kpi-card" style="border-color: #6f42c1;"><div>PDI Failure</div><div class="kpi-val" id="k_pdi" style="color:#6f42c1">0%</div></div>
       </div>
 
       <div style="overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; text-align:center; font-size:13px;">
               <thead>
                   <tr style="background:#333; color:white;">
-                      <th style="padding:10px;">Date</th><th>Model</th><th>Input</th><th>RMD %</th><th>Proc %</th><th>PDI Input</th><th>PDI Fail</th><th>Action</th>
+                      <th style="padding:10px;">Date</th><th>Model</th><th>Input</th><th>RMD %</th><th>Proc %</th><th>Action</th>
                   </tr>
               </thead>
               <tbody id="dash_table"></tbody>
@@ -156,22 +154,6 @@
           </div>
       </div>
 
-      <!-- PDI Section -->
-      <div class="section-card">
-          <div style="display:flex; justify-content:space-between;">
-              <h5 style="margin:0;">PDI Details</h5>
-              <label style="display:flex; gap:5px; cursor:pointer;"><input type="checkbox" id="pdi_check" onchange="togglePDI()"> Enable PDI</label>
-          </div>
-          <div id="pdi_inputs" style="display:none; margin-top:15px;">
-              <div class="form-grid">
-                  <div><label>PDI Input</label><input type="number" id="p_in" oninput="calcPDI()"></div>
-                  <div><label>PDI Pass</label><input type="number" id="p_pass" oninput="calcPDI()"></div>
-                  <div><label>PDI Fail</label><input type="text" id="p_fail" readonly style="color:red; font-weight:bold;"></div>
-                  <div><label>PDI Rate %</label><input type="text" id="p_rate" readonly></div>
-              </div>
-          </div>
-      </div>
-
       <button class="btn-main" onclick="showPreview()">👁️ Preview & Submit</button>
   </div>
 
@@ -195,7 +177,6 @@
                   <td style="padding:10px;"><b>Total Production:</b> <br><span id="r_inp">0</span></td>
                   <td style="padding:10px;"><b>Total Defects:</b> <br><span id="r_def">0</span></td>
                   <td style="padding:10px;"><b>Avg Process Rej:</b> <br><span id="r_proc" style="color:red">0%</span></td>
-                  <td style="padding:10px;"><b>Avg PDI Fail:</b> <br><span id="r_pdi" style="color:purple">0%</span></td>
               </tr>
           </table>
 
@@ -281,7 +262,7 @@ function switchTab(btn, id){
 function addDefectRow(data=null){
     const div = document.createElement('div');
     div.className = 'defect-row';
-    // Added RATE column input
+    // Rate Column added
     div.innerHTML = `
         <div><label>Defect Name</label><input type="text" class="d-name" placeholder="Name"></div>
         <div><label>Type</label><select class="d-type" onchange="calcStats()"><option>Process</option><option>RMD</option></select></div>
@@ -320,18 +301,6 @@ function calcStats(){
     return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText };
 }
 
-function togglePDI(){
-    document.getElementById('pdi_inputs').style.display = document.getElementById('pdi_check').checked ? 'block' : 'none';
-}
-
-function calcPDI(){
-    let i = +document.getElementById('p_in').value||0;
-    let p = +document.getElementById('p_pass').value||0;
-    let f = Math.max(0, i-p);
-    document.getElementById('p_fail').value = f;
-    document.getElementById('p_rate').value = i ? ((f/i)*100).toFixed(2)+"%" : "0%";
-}
-
 // ==========================================
 // AI & PREVIEW
 // ==========================================
@@ -358,9 +327,7 @@ function showPreview() {
         model: document.getElementById('e_model').value,
         input: document.getElementById('e_input').value,
         rmdRate: stats.rmdRate,
-        procRate: stats.procRate,
-        pdiOn: document.getElementById('pdi_check').checked,
-        pdi: { i: document.getElementById('p_in').value, f: document.getElementById('p_fail').value, r: document.getElementById('p_rate').value }
+        procRate: stats.procRate
     };
     
     // Rows
@@ -368,7 +335,6 @@ function showPreview() {
     document.querySelectorAll('.defect-row').forEach(r => {
         let type = r.querySelector('.d-type').value;
         let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
-        // Added Rate column to Preview
         rows += `<tr>
             <td>${r.querySelector('.d-name').value}</td>
             <td><span class="badge ${cls}">${type}</span></td>
@@ -392,7 +358,6 @@ function showPreview() {
             <div style="text-align:right;">
                 <p style="color:#856404;"><b>RMD Rej:</b> ${d.rmdRate}</p>
                 <p style="color:#721c24;"><b>Proc Rej:</b> ${d.procRate}</p>
-                ${d.pdiOn ? `<p style="color:#6f42c1;"><b>PDI Fail:</b> ${d.pdi.r}</p>` : ''}
             </div>
         </div>
         <table class="doc-table">
@@ -424,11 +389,7 @@ async function saveData() {
         rmdRate: stats.rmdRate,
         procRate: stats.procRate,
         prep: document.getElementById('e_prep').value,
-        defects: defects,
-        pdiInput: document.getElementById('p_in').value,
-        pdiPass: document.getElementById('p_pass').value,
-        pdiFail: document.getElementById('p_fail').value,
-        pdiRate: document.getElementById('p_rate').value
+        defects: defects
     };
 
     try {
@@ -439,7 +400,7 @@ async function saveData() {
 }
 
 // ==========================================
-// DASHBOARD & REPORTS
+// DASHBOARD & REPORTS (NO PDI)
 // ==========================================
 async function loadData() {
     let res = await fetch(API_URL);
@@ -449,15 +410,15 @@ async function loadData() {
     // Populate Dashboard Table
     let tbody = document.getElementById('dash_table');
     tbody.innerHTML = "";
-    let kpi = { prod:0, rmdD:0, procD:0, pdiI:0, pdiF:0 };
+    let kpi = { prod:0, rmdD:0, procD:0 };
     let models = new Set();
 
     allData.forEach((r, i) => {
         if(r[0] < document.getElementById('d_from').value) return;
         
-        // 0:Date, 1:Line, 2:Model, 3:Input, 4:TotDef, 5:RMD%, 6:Proc%, 9:PdiIn, 11:PdiFail
-        let inp = +r[3]||0, pIn = +r[9]||0, pF = +r[11]||0;
-        kpi.prod += inp; kpi.pdiI += pIn; kpi.pdiF += pF;
+        // 0:Date, 1:Line, 2:Model, 3:Input, 4:TotDef, 5:RMD%, 6:Proc%
+        let inp = +r[3]||0;
+        kpi.prod += inp;
         
         let rmdR = parseFloat(r[5])||0; let procR = parseFloat(r[6])||0;
         kpi.rmdD += (inp * rmdR / 100);
@@ -467,7 +428,6 @@ async function loadData() {
         tbody.innerHTML += `<tr>
             <td>${r[0]}</td><td>${r[2]}</td><td>${inp}</td>
             <td style="color:#b38600">${r[5]}</td><td style="color:#dc3545">${r[6]}</td>
-            <td>${pIn}</td><td style="color:red">${pF}</td>
             <td><button class="btn-sm" style="background:#17a2b8" onclick='edit(${i}, ${JSON.stringify(r)})'>Edit</button></td>
         </tr>`;
     });
@@ -476,7 +436,6 @@ async function loadData() {
     document.getElementById('k_prod').innerText = kpi.prod;
     document.getElementById('k_rmd').innerText = kpi.prod ? (kpi.rmdD/kpi.prod*100).toFixed(2)+"%" : "0%";
     document.getElementById('k_proc').innerText = kpi.prod ? (kpi.procD/kpi.prod*100).toFixed(2)+"%" : "0%";
-    document.getElementById('k_pdi').innerText = kpi.pdiI ? (kpi.pdiF/kpi.pdiI*100).toFixed(2)+"%" : "0%";
 
     // Populate Report Model Dropdown
     let sel = document.getElementById('m_select');
@@ -495,14 +454,6 @@ function edit(i, r) {
     
     document.getElementById('defect_wrapper').innerHTML = "";
     try { JSON.parse(r[8]).forEach(d => addDefectRow(d)); } catch(e){}
-    
-    if(r[9]) {
-        document.getElementById('pdi_check').checked = true; togglePDI();
-        document.getElementById('p_in').value = r[9];
-        document.getElementById('p_pass').value = r[10];
-        document.getElementById('p_fail').value = r[11];
-        document.getElementById('p_rate').value = r[12];
-    }
     calcStats();
 }
 
@@ -517,12 +468,11 @@ function genReport(mode) {
     let filtered = allData.filter(r => r[0] >= from && (!targetModel || r[2] === targetModel));
     
     // Aggregation
-    let totIn=0, totDef=0, pdiF=0, pdiI=0;
+    let totIn=0, totDef=0;
     let dateMap = {}, defectMap = {};
 
     filtered.forEach(r => {
         let inp = +r[3]||0; totIn += inp; totDef += (+r[4]||0);
-        pdiI += (+r[9]||0); pdiF += (+r[11]||0);
         
         let d = r[0];
         if(!dateMap[d]) dateMap[d] = {i:0, d:0};
@@ -537,7 +487,6 @@ function genReport(mode) {
         document.getElementById('r_inp').innerText = totIn;
         document.getElementById('r_def').innerText = totDef;
         document.getElementById('r_proc').innerText = totIn ? (totDef/totIn*100).toFixed(2)+"%" : "0%";
-        document.getElementById('r_pdi').innerText = pdiI ? (pdiF/pdiI*100).toFixed(2)+"%" : "0%";
         
         drawTrend(dateMap, 'chart_trend');
         drawPareto(defectMap, 'chart_pareto');
