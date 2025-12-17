@@ -49,10 +49,10 @@
   
   /* Modal & Preview */
   .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
-  .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 800px; border-radius: 10px; overflow: hidden; }
+  .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 850px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
   
-  /* PREVIEW BODY FIXED FOR PDF */
+  /* PREVIEW BODY - Adjusted for scroll */
   .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background: #ffffff; } 
   
   .preview-footer { padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
@@ -78,7 +78,8 @@
 <div class="container">
   <!-- Header -->
   <div class="header-box">
-      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="logo" alt="Califonix">
+      <!-- Added crossorigin="anonymous" to fix CORS issue in PDF -->
+      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="logo" alt="Califonix" crossorigin="anonymous">
       <div>
           <h3 style="margin:0; text-align:right;">Production & Quality System</h3>
           <small style="color:#777;">Smart Manufacturing Dashboard</small>
@@ -229,9 +230,8 @@
             <h4 style="margin:0;">📄 Confirm Submission</h4>
             <span style="cursor:pointer; font-size:20px;" onclick="closeModal()">✖</span>
         </div>
-        <!-- IMPORTANT: ID prevBody is target for PDF -->
         <div class="preview-body" id="prevBody">
-            <!-- Content will be injected here -->
+            <!-- Content injected here -->
         </div>
         <div class="preview-footer">
             <button class="btn-sm" style="background:#17a2b8; font-size:14px; padding:10px 20px;" onclick="downloadPreviewPDF(event)"><i class="fas fa-file-pdf"></i> Download PDF</button>
@@ -247,7 +247,7 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// 🔴 यहाँ अपना URL डालें (Make sure deployed as "Anyone")
+// 🔴 Replace with YOUR Deployment URL
 const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; 
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
@@ -467,7 +467,7 @@ function renderTop3(list, totalInput) {
 }
 
 // ==========================================
-// PREVIEW & PDF DOWNLOAD FUNCTION
+// PREVIEW FUNCTION
 // ==========================================
 function showPreview() {
     let stats = calcStats();
@@ -512,7 +512,8 @@ function showPreview() {
     let html = `
         <div style="padding:20px; background:white;">
             <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
-                <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;">
+                <!-- Crossorigin Added Here -->
+                <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;" crossorigin="anonymous">
                 <div><h3 style="margin:0; color:#007bff;">Production Report</h3><small>${d.date}</small></div>
             </div>
             
@@ -560,39 +561,51 @@ function showPreview() {
 }
 
 // ---------------------------------------------
-// UPDATED PDF DOWNLOAD FUNCTION (FIXED)
+// FIXED PDF DOWNLOAD FUNCTION (BLANK PAGE FIX)
 // ---------------------------------------------
 function downloadPreviewPDF(event) {
-    // 1. Target the content
+    // Target Element
     const element = document.getElementById('prevBody');
     
-    // 2. Button State
+    // Save original styles to revert later
+    const originalMaxHeight = element.style.maxHeight;
+    const originalOverflow = element.style.overflowY;
+
+    // TEMPORARY FIX: Remove scroll constraints for PDF generation
+    element.style.maxHeight = 'none';
+    element.style.overflowY = 'visible';
+
+    // Button UI
     const btn = event.currentTarget;
     const oldText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
     btn.disabled = true;
 
-    // 3. Options for html2pdf
-    // useCORS: true is ESSENTIAL for the Logo to appear
+    // PDF Config
     const opt = {
         margin:       0.3,
         filename:     'Production_Report.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
-    // 4. Generate & Save
+    // Generate
     html2pdf().set(opt).from(element).save()
         .then(() => {
+            // Restore UI and Styles
             btn.innerHTML = oldText;
             btn.disabled = false;
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflowY = originalOverflow;
         })
         .catch(err => {
             console.error(err);
-            alert("PDF Generation Error (Check Console)");
+            alert("Error creating PDF");
             btn.innerHTML = oldText;
             btn.disabled = false;
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflowY = originalOverflow;
         });
 }
 
