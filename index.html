@@ -59,7 +59,8 @@
   .modal-content { background: white; margin: 2% auto; padding: 0; width: 90%; max-width: 800px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
   .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; }
-  .preview-footer { padding: 15px; background: #f8f9fa; text-align: right; border-top: 1px solid #eee; }
+  /* Updated Footer for Flexbox */
+  .preview-footer { padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
   
   /* Preview Document Style */
   .doc-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -238,8 +239,12 @@
             <!-- Dynamic Content -->
         </div>
         <div class="preview-footer">
-            <button class="btn-sm" style="background:#6c757d; font-size:14px; padding:10px 20px;" onclick="closeModal()">Edit</button>
-            <button class="btn-sm" style="background:#28a745; font-size:14px; padding:10px 20px;" onclick="saveData()">✅ Final Submit</button>
+            <!-- New Share Button added here -->
+            <button class="btn-sm" style="background:#17a2b8; font-size:14px; padding:10px 20px;" onclick="sharePreviewPdf()"><i class="fas fa-file-pdf"></i> Share / Download</button>
+            <div>
+                <button class="btn-sm" style="background:#6c757d; font-size:14px; padding:10px 20px;" onclick="closeModal()">Edit</button>
+                <button class="btn-sm" style="background:#28a745; font-size:14px; padding:10px 20px;" onclick="saveData()">✅ Final Submit</button>
+            </div>
         </div>
     </div>
 </div>
@@ -248,7 +253,7 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; // 🔴 यहाँ अपना URL डालें
+const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; 
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
 let allData = [];
@@ -327,7 +332,7 @@ function calcStats(){
 }
 
 // ==========================================
-// TOP 3 RENDER LOGIC (CATEGORIZED ANALYSIS)
+// TOP 3 RENDER LOGIC
 // ==========================================
 function updateActionMap(input, defName) {
     actionPlanMap[defName] = input.value;
@@ -338,7 +343,6 @@ function renderTop3(list, totalInput) {
     if(list.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
 
-    // 1. AGGREGATE SAME DEFECTS & SPLIT ANALYSIS
     let grouped = {};
     list.forEach(d => {
         let key = d.name.trim().toLowerCase();
@@ -352,10 +356,8 @@ function renderTop3(list, totalInput) {
                 rmdAna: [] 
             }; 
         }
-        
         grouped[key].qty += +d.qty;
         
-        // Categorize Analysis
         if(d.ana && d.ana.trim() !== "") {
             if(d.type === 'Process') {
                 if(!grouped[key].procAna.includes(d.ana)) grouped[key].procAna.push(d.ana);
@@ -365,12 +367,9 @@ function renderTop3(list, totalInput) {
         }
     });
 
-    // 2. FORMAT DATA FOR DISPLAY
     let aggregatedList = Object.values(grouped);
     aggregatedList.forEach(d => {
         d.rate = totalInput ? ((d.qty / totalInput) * 100).toFixed(2) + "%" : "0%";
-        
-        // Build the formatted string
         let anaHtml = "";
         if(d.procAna.length > 0) anaHtml += `<b>Process :-</b> ${d.procAna.join(', ')}`;
         if(d.rmdAna.length > 0) {
@@ -383,7 +382,6 @@ function renderTop3(list, totalInput) {
     aggregatedList.sort((a,b) => b.qty - a.qty);
     let top3 = aggregatedList.slice(0, 3);
 
-    // 3. DRAW CHART
     let chartData = [['Defect', 'Total Qty', { role: 'style' }]];
     let colors = ['#dc3545', '#fd7e14', '#ffc107'];
     top3.forEach((d, i) => {
@@ -398,7 +396,6 @@ function renderTop3(list, totalInput) {
         vAxis: { minValue: 0 }
     });
 
-    // 4. RENDER TABLE
     let tbody = document.getElementById('top3_tbody');
     tbody.innerHTML = "";
     
@@ -420,7 +417,7 @@ function renderTop3(list, totalInput) {
 }
 
 // ==========================================
-// AI & PREVIEW (UPDATED WITH SPLIT ANALYSIS)
+// AI & PREVIEW (UPDATED)
 // ==========================================
 async function aiFix(btn) {
     let txt = btn.previousElementSibling.value;
@@ -449,7 +446,6 @@ function showPreview() {
         procRate: stats.procRate
     };
 
-    // 1. RE-CALCULATE AGGREGATED TOP 3 FOR PREVIEW
     let defectList = stats.defectList; 
     let grouped = {};
     defectList.forEach(item => {
@@ -475,13 +471,11 @@ function showPreview() {
 
     let aggregated = Object.values(grouped).sort((a,b)=>b.qty - a.qty).slice(0,3);
 
-    // 2. GENERATE TOP 3 TABLE HTML
     let top3Rows = "";
     aggregated.forEach((item, i) => {
         let rate = d.input ? ((item.qty / d.input) * 100).toFixed(2) + "%" : "0%";
         let act = actionPlanMap[item.name] || "<i>Pending...</i>";
         
-        // Build Display Analysis
         let anaHtml = "";
         if(item.procAna.length > 0) anaHtml += `<b>Process :-</b> ${item.procAna.join(', ')}`;
         if(item.rmdAna.length > 0) {
@@ -502,12 +496,10 @@ function showPreview() {
         `;
     });
 
-    // 3. GET CHART IMAGE
     let chartImg = (top3Chart && aggregated.length > 0) 
         ? `<div style="text-align:center; margin:20px 0; border:1px solid #eee; padding:10px;"><img src="${top3Chart.getImageURI()}" style="width:100%; max-width:500px;"></div>` 
         : "";
 
-    // 4. MAIN PREVIEW HTML
     let html = `
         <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
             <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;">
@@ -565,6 +557,27 @@ function showPreview() {
     document.getElementById('prevBody').innerHTML = html;
     document.getElementById('prevModal').style.display = "block";
 }
+
+// Function to Share/Download Preview as PDF
+function sharePreviewPdf() {
+    const element = document.getElementById('prevBody');
+    const opt = {
+        margin:       0.2,
+        filename:     'Production_Report_' + new Date().toISOString().split('T')[0] + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+    
+    const btn = event.target;
+    const oldText = btn.innerHTML;
+    btn.innerHTML = "⏳ Generating...";
+    
+    html2pdf().set(opt).from(element).save().then(() => {
+        btn.innerHTML = oldText;
+    });
+}
+
 function closeModal() { document.getElementById('prevModal').style.display = "none"; }
 
 async function saveData() {
@@ -733,5 +746,3 @@ function resetForm() { document.getElementById('edit_index').value=""; document.
 </script>
 </body>
 </html>
-
-
