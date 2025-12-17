@@ -327,7 +327,7 @@ function calcStats(){
 }
 
 // ==========================================
-// TOP 3 RENDER LOGIC (AGGREGATED)
+// TOP 3 RENDER LOGIC (CATEGORIZED ANALYSIS)
 // ==========================================
 function updateActionMap(input, defName) {
     actionPlanMap[defName] = input.value;
@@ -338,30 +338,52 @@ function renderTop3(list, totalInput) {
     if(list.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
 
-    // 1. AGGREGATE SAME DEFECTS
+    // 1. AGGREGATE SAME DEFECTS & SPLIT ANALYSIS
     let grouped = {};
     list.forEach(d => {
         let key = d.name.trim().toLowerCase();
         if(!key) return;
+        
         if(!grouped[key]) {
-            grouped[key] = { ...d }; 
-            grouped[key].name = d.name; 
-        } else {
-            grouped[key].qty += d.qty;
-            if(d.ana && !grouped[key].ana.includes(d.ana)) {
-                 grouped[key].ana += (grouped[key].ana ? ", " : "") + d.ana;
+            grouped[key] = { 
+                name: d.name, 
+                qty: 0, 
+                procAna: [], 
+                rmdAna: [] 
+            }; 
+        }
+        
+        grouped[key].qty += +d.qty;
+        
+        // Categorize Analysis
+        if(d.ana && d.ana.trim() !== "") {
+            if(d.type === 'Process') {
+                if(!grouped[key].procAna.includes(d.ana)) grouped[key].procAna.push(d.ana);
+            } else {
+                if(!grouped[key].rmdAna.includes(d.ana)) grouped[key].rmdAna.push(d.ana);
             }
         }
     });
 
+    // 2. FORMAT DATA FOR DISPLAY
     let aggregatedList = Object.values(grouped);
     aggregatedList.forEach(d => {
         d.rate = totalInput ? ((d.qty / totalInput) * 100).toFixed(2) + "%" : "0%";
+        
+        // Build the formatted string
+        let anaHtml = "";
+        if(d.procAna.length > 0) anaHtml += `<b>Process :-</b> ${d.procAna.join(', ')}`;
+        if(d.rmdAna.length > 0) {
+            if(anaHtml) anaHtml += "<br>";
+            anaHtml += `<b>RMD :-</b> ${d.rmdAna.join(', ')}`;
+        }
+        d.displayAna = anaHtml || "-";
     });
+
     aggregatedList.sort((a,b) => b.qty - a.qty);
     let top3 = aggregatedList.slice(0, 3);
 
-    // 2. DRAW CHART
+    // 3. DRAW CHART
     let chartData = [['Defect', 'Total Qty', { role: 'style' }]];
     let colors = ['#dc3545', '#fd7e14', '#ffc107'];
     top3.forEach((d, i) => {
@@ -376,7 +398,7 @@ function renderTop3(list, totalInput) {
         vAxis: { minValue: 0 }
     });
 
-    // 3. RENDER TABLE
+    // 4. RENDER TABLE
     let tbody = document.getElementById('top3_tbody');
     tbody.innerHTML = "";
     
@@ -388,7 +410,7 @@ function renderTop3(list, totalInput) {
                 <td><b>${d.name}</b></td>
                 <td>${d.qty}</td>
                 <td style="color:red; font-weight:bold;">${d.rate}</td>
-                <td><small>${d.ana || '-'}</small></td>
+                <td style="font-size:12px;">${d.displayAna}</td>
                 <td><input type="text" class="action-input" placeholder="Enter Action Plan..." 
                     value="${existingAction}" oninput="updateActionMap(this, '${d.name}')">
                 </td>
@@ -398,7 +420,7 @@ function renderTop3(list, totalInput) {
 }
 
 // ==========================================
-// AI & PREVIEW (UPDATED)
+// AI & PREVIEW (UPDATED WITH SPLIT ANALYSIS)
 // ==========================================
 async function aiFix(btn) {
     let txt = btn.previousElementSibling.value;
@@ -428,18 +450,29 @@ function showPreview() {
     };
 
     // 1. RE-CALCULATE AGGREGATED TOP 3 FOR PREVIEW
-    let defectList = stats.defectList; // raw list
+    let defectList = stats.defectList; 
     let grouped = {};
     defectList.forEach(item => {
         let key = item.name.trim().toLowerCase();
         if(!grouped[key]) {
-            grouped[key] = { ...item }; 
-            grouped[key].name = item.name; 
-        } else {
-            grouped[key].qty += item.qty;
-            if(item.ana && !grouped[key].ana.includes(item.ana)) grouped[key].ana += ", " + item.ana;
+            grouped[key] = { 
+                name: item.name, 
+                qty: 0,
+                procAna: [],
+                rmdAna: []
+            }; 
+        }
+        grouped[key].qty += item.qty;
+        
+        if(item.ana && item.ana.trim() !== "") {
+            if(item.type === 'Process') {
+                if(!grouped[key].procAna.includes(item.ana)) grouped[key].procAna.push(item.ana);
+            } else {
+                if(!grouped[key].rmdAna.includes(item.ana)) grouped[key].rmdAna.push(item.ana);
+            }
         }
     });
+
     let aggregated = Object.values(grouped).sort((a,b)=>b.qty - a.qty).slice(0,3);
 
     // 2. GENERATE TOP 3 TABLE HTML
@@ -447,13 +480,23 @@ function showPreview() {
     aggregated.forEach((item, i) => {
         let rate = d.input ? ((item.qty / d.input) * 100).toFixed(2) + "%" : "0%";
         let act = actionPlanMap[item.name] || "<i>Pending...</i>";
+        
+        // Build Display Analysis
+        let anaHtml = "";
+        if(item.procAna.length > 0) anaHtml += `<b>Process :-</b> ${item.procAna.join(', ')}`;
+        if(item.rmdAna.length > 0) {
+            if(anaHtml) anaHtml += "<br>";
+            anaHtml += `<b>RMD :-</b> ${item.rmdAna.join(', ')}`;
+        }
+        if(!anaHtml) anaHtml = "-";
+
         top3Rows += `
             <tr style="background:#fffcf5;">
                 <td>#${i+1}</td>
                 <td><b>${item.name}</b></td>
                 <td>${item.qty}</td>
                 <td style="color:red;">${rate}</td>
-                <td>${item.ana}</td>
+                <td style="font-size:12px;">${anaHtml}</td>
                 <td style="color:green; font-weight:bold;">${act}</td>
             </tr>
         `;
@@ -500,7 +543,6 @@ function showPreview() {
             <tbody>
     `;
 
-    // Add Raw Rows
     document.querySelectorAll('.defect-row').forEach(r => {
         let name = r.querySelector('.d-name').value;
         let qty = r.querySelector('.d-qty').value;
