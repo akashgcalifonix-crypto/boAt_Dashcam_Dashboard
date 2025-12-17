@@ -58,13 +58,13 @@
   .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 2% auto; padding: 0; width: 90%; max-width: 800px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-  .preview-body { padding: 30px; }
+  .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; }
   .preview-footer { padding: 15px; background: #f8f9fa; text-align: right; border-top: 1px solid #eee; }
   
   /* Preview Document Style */
-  .doc-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-  .doc-table th { background: #f1f1f1; padding: 10px; text-align: left; border-bottom: 2px solid #ddd; }
-  .doc-table td { padding: 10px; border-bottom: 1px solid #eee; }
+  .doc-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .doc-table th { background: #f1f1f1; padding: 8px; text-align: left; border-bottom: 2px solid #ddd; }
+  .doc-table td { padding: 8px; border-bottom: 1px solid #eee; }
   .badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
   .bg-rmd { background: #fff3cd; color: #856404; } .bg-proc { background: #f8d7da; color: #721c24; }
 
@@ -254,6 +254,7 @@ const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA";
 let allData = [];
 // Store Action Plans temporarily while typing
 let actionPlanMap = {}; 
+let top3Chart = null; // Store chart instance for preview
 
 google.charts.load('current', {'packages':['corechart']});
 
@@ -292,7 +293,6 @@ function addDefectRow(data=null){
         div.querySelector('.d-type').value = data.type;
         div.querySelector('.d-qty').value = data.qty;
         div.querySelector('.d-ana').value = data.ana;
-        // Pre-fill action plan if exists
         if(data.action) actionPlanMap[data.name] = data.action;
     }
 }
@@ -321,7 +321,6 @@ function calcStats(){
     document.getElementById('disp_rmd').innerText = inp ? ((rmdSum/inp)*100).toFixed(2)+"%" : "0%";
     document.getElementById('disp_proc').innerText = inp ? ((procSum/inp)*100).toFixed(2)+"%" : "0%";
     
-    // Call the aggregated render function
     renderTop3(defectList, inp);
 
     return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText, defectList };
@@ -342,15 +341,12 @@ function renderTop3(list, totalInput) {
     // 1. AGGREGATE SAME DEFECTS
     let grouped = {};
     list.forEach(d => {
-        let key = d.name.trim().toLowerCase(); // Normalize key
+        let key = d.name.trim().toLowerCase();
         if(!key) return;
-        
         if(!grouped[key]) {
-            // New entry
             grouped[key] = { ...d }; 
-            grouped[key].name = d.name; // Keep original Casing
+            grouped[key].name = d.name; 
         } else {
-            // Existing: Add Qty & Merge Analysis
             grouped[key].qty += d.qty;
             if(d.ana && !grouped[key].ana.includes(d.ana)) {
                  grouped[key].ana += (grouped[key].ana ? ", " : "") + d.ana;
@@ -358,39 +354,33 @@ function renderTop3(list, totalInput) {
         }
     });
 
-    // Convert Object back to Array
     let aggregatedList = Object.values(grouped);
-
-    // Recalculate Rate for Aggregated Qty
     aggregatedList.forEach(d => {
         d.rate = totalInput ? ((d.qty / totalInput) * 100).toFixed(2) + "%" : "0%";
     });
-
-    // 2. SORT (Highest Qty First)
     aggregatedList.sort((a,b) => b.qty - a.qty);
     let top3 = aggregatedList.slice(0, 3);
 
-    // 3. DRAW CHART
+    // 2. DRAW CHART
     let chartData = [['Defect', 'Total Qty', { role: 'style' }]];
     let colors = ['#dc3545', '#fd7e14', '#ffc107'];
     top3.forEach((d, i) => {
         chartData.push([d.name, d.qty, colors[i] || '#0d6efd']);
     });
     
-    let wrapper = new google.visualization.ColumnChart(document.getElementById('top3_chart'));
-    wrapper.draw(google.visualization.arrayToDataTable(chartData), {
+    top3Chart = new google.visualization.ColumnChart(document.getElementById('top3_chart'));
+    top3Chart.draw(google.visualization.arrayToDataTable(chartData), {
         title: 'Top 3 Defects (Aggregated)',
         legend: { position: "none" },
         chartArea: {width:'80%', height:'70%'},
         vAxis: { minValue: 0 }
     });
 
-    // 4. RENDER TABLE
+    // 3. RENDER TABLE
     let tbody = document.getElementById('top3_tbody');
     tbody.innerHTML = "";
     
     top3.forEach((d, i) => {
-        // Use the original name to fetch action plan
         let existingAction = actionPlanMap[d.name] || "";
         tbody.innerHTML += `
             <tr>
@@ -408,7 +398,7 @@ function renderTop3(list, totalInput) {
 }
 
 // ==========================================
-// AI & PREVIEW
+// AI & PREVIEW (UPDATED)
 // ==========================================
 async function aiFix(btn) {
     let txt = btn.previousElementSibling.value;
@@ -421,7 +411,7 @@ async function aiFix(btn) {
         });
         let j = await res.json();
         btn.previousElementSibling.value = j.candidates[0].content.parts[0].text;
-        calcStats(); // Update analysis in Top 3 table
+        calcStats();
     } catch(e) { alert("AI Error"); }
     btn.innerText = "AI";
 }
@@ -436,32 +426,51 @@ function showPreview() {
         rmdRate: stats.rmdRate,
         procRate: stats.procRate
     };
-    
-    let rows = "";
-    document.querySelectorAll('.defect-row').forEach(r => {
-        let name = r.querySelector('.d-name').value;
-        let qty = r.querySelector('.d-qty').value;
-        let type = r.querySelector('.d-type').value;
-        let rate = r.querySelector('.d-rate').value;
-        let ana = r.querySelector('.d-ana').value;
-        let act = actionPlanMap[name] || "";
-        
-        let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
-        rows += `<tr>
-            <td>${name}</td>
-            <td><span class="badge ${cls}">${type}</span></td>
-            <td>${qty}</td>
-            <td style="font-weight:bold;">${rate}</td>
-            <td>${ana}</td>
-            <td style="color:green; font-style:italic;">${act}</td>
-        </tr>`;
+
+    // 1. RE-CALCULATE AGGREGATED TOP 3 FOR PREVIEW
+    let defectList = stats.defectList; // raw list
+    let grouped = {};
+    defectList.forEach(item => {
+        let key = item.name.trim().toLowerCase();
+        if(!grouped[key]) {
+            grouped[key] = { ...item }; 
+            grouped[key].name = item.name; 
+        } else {
+            grouped[key].qty += item.qty;
+            if(item.ana && !grouped[key].ana.includes(item.ana)) grouped[key].ana += ", " + item.ana;
+        }
+    });
+    let aggregated = Object.values(grouped).sort((a,b)=>b.qty - a.qty).slice(0,3);
+
+    // 2. GENERATE TOP 3 TABLE HTML
+    let top3Rows = "";
+    aggregated.forEach((item, i) => {
+        let rate = d.input ? ((item.qty / d.input) * 100).toFixed(2) + "%" : "0%";
+        let act = actionPlanMap[item.name] || "<i>Pending...</i>";
+        top3Rows += `
+            <tr style="background:#fffcf5;">
+                <td>#${i+1}</td>
+                <td><b>${item.name}</b></td>
+                <td>${item.qty}</td>
+                <td style="color:red;">${rate}</td>
+                <td>${item.ana}</td>
+                <td style="color:green; font-weight:bold;">${act}</td>
+            </tr>
+        `;
     });
 
+    // 3. GET CHART IMAGE
+    let chartImg = (top3Chart && aggregated.length > 0) 
+        ? `<div style="text-align:center; margin:20px 0; border:1px solid #eee; padding:10px;"><img src="${top3Chart.getImageURI()}" style="width:100%; max-width:500px;"></div>` 
+        : "";
+
+    // 4. MAIN PREVIEW HTML
     let html = `
         <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
             <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;">
             <div><h3 style="margin:0; color:#007bff;">Production Report</h3><small>${d.date}</small></div>
         </div>
+        
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px;">
             <div>
                 <p><b>Line:</b> ${d.line}</p>
@@ -473,11 +482,44 @@ function showPreview() {
                 <p style="color:#721c24;"><b>Proc Rej:</b> ${d.procRate}</p>
             </div>
         </div>
+
+        ${aggregated.length > 0 ? `
+            <div style="background:#f1f8ff; padding:15px; border-radius:8px; border:1px dashed #007bff; margin-bottom:20px;">
+                <h4 style="margin-top:0; color:#0d6efd; border-bottom:1px solid #cce5ff; padding-bottom:5px;">🏆 Top 3 Defects & Action Plan</h4>
+                ${chartImg}
+                <table class="doc-table">
+                    <thead style="background:#e7f1ff;"><tr><th>Rank</th><th>Defect</th><th>Tot Qty</th><th>Rate</th><th>Analysis</th><th>Action Plan</th></tr></thead>
+                    <tbody>${top3Rows}</tbody>
+                </table>
+            </div>
+        ` : ''}
+
+        <h5 style="border-bottom:1px solid #ddd; padding-bottom:5px;">Full Defect List</h5>
         <table class="doc-table">
-            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th><th>Action Plan</th></tr></thead>
-            <tbody>${rows || '<tr><td colspan="6" style="text-align:center">No Defects</td></tr>'}</tbody>
-        </table>
+            <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th></tr></thead>
+            <tbody>
     `;
+
+    // Add Raw Rows
+    document.querySelectorAll('.defect-row').forEach(r => {
+        let name = r.querySelector('.d-name').value;
+        let qty = r.querySelector('.d-qty').value;
+        let type = r.querySelector('.d-type').value;
+        let rate = r.querySelector('.d-rate').value;
+        let ana = r.querySelector('.d-ana').value;
+        let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
+        
+        html += `<tr>
+            <td>${name}</td>
+            <td><span class="badge ${cls}">${type}</span></td>
+            <td>${qty}</td>
+            <td>${rate}</td>
+            <td>${ana}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    
     document.getElementById('prevBody').innerHTML = html;
     document.getElementById('prevModal').style.display = "block";
 }
@@ -490,7 +532,6 @@ async function saveData() {
     
     document.querySelectorAll('.defect-row').forEach(r => {
         let name = r.querySelector('.d-name').value;
-        // Merge Action Plan into saved data
         defects.push({ 
             name: name, 
             type: r.querySelector('.d-type').value, 
