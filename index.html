@@ -152,14 +152,14 @@
           </div>
       </div>
 
-      <!-- NEW TOP 3 SECTION -->
+      <!-- NEW TOP 3 SECTION (Aggregated) -->
       <div id="top3_container" class="top3-box">
-          <h4 style="margin-top:0; color:#0d6efd;"><i class="fas fa-chart-pie"></i> Top 3 Defects & Action Plan (Auto-Calculated)</h4>
+          <h4 style="margin-top:0; color:#0d6efd;"><i class="fas fa-chart-pie"></i> Top 3 Defects & Action Plan (Aggregated)</h4>
           <div class="top3-grid">
               <div style="flex:1; min-width:300px; height:250px; background:white; padding:5px; border-radius:5px;" id="top3_chart"></div>
               <div style="flex:1.5; min-width:350px;">
                   <table class="top3-table">
-                      <thead><tr><th>Rank</th><th>Defect</th><th>Qty</th><th>Rate %</th><th>Analysis</th><th>Action Plan (Manual)</th></tr></thead>
+                      <thead><tr><th>Rank</th><th>Defect</th><th>Total Qty</th><th>Rate %</th><th>Merged Analysis</th><th>Action Plan (Manual)</th></tr></thead>
                       <tbody id="top3_tbody"></tbody>
                   </table>
               </div>
@@ -312,7 +312,7 @@ function calcStats(){
         row.querySelector('.d-rate').value = rate;
 
         if(q > 0 && name) {
-            defectList.push({ name, qty: q, rate, ana, type:t });
+            defectList.push({ name, qty: q, ana, type:t });
         }
 
         if(t === 'RMD') rmdSum += q; else procSum += q;
@@ -321,13 +321,14 @@ function calcStats(){
     document.getElementById('disp_rmd').innerText = inp ? ((rmdSum/inp)*100).toFixed(2)+"%" : "0%";
     document.getElementById('disp_proc').innerText = inp ? ((procSum/inp)*100).toFixed(2)+"%" : "0%";
     
+    // Call the aggregated render function
     renderTop3(defectList, inp);
 
     return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText, defectList };
 }
 
 // ==========================================
-// TOP 3 RENDER LOGIC
+// TOP 3 RENDER LOGIC (AGGREGATED)
 // ==========================================
 function updateActionMap(input, defName) {
     actionPlanMap[defName] = input.value;
@@ -338,12 +339,39 @@ function renderTop3(list, totalInput) {
     if(list.length === 0) { container.style.display = 'none'; return; }
     container.style.display = 'block';
 
-    // Sort Descending by Qty
-    list.sort((a,b) => b.qty - a.qty);
-    let top3 = list.slice(0, 3);
+    // 1. AGGREGATE SAME DEFECTS
+    let grouped = {};
+    list.forEach(d => {
+        let key = d.name.trim().toLowerCase(); // Normalize key
+        if(!key) return;
+        
+        if(!grouped[key]) {
+            // New entry
+            grouped[key] = { ...d }; 
+            grouped[key].name = d.name; // Keep original Casing
+        } else {
+            // Existing: Add Qty & Merge Analysis
+            grouped[key].qty += d.qty;
+            if(d.ana && !grouped[key].ana.includes(d.ana)) {
+                 grouped[key].ana += (grouped[key].ana ? ", " : "") + d.ana;
+            }
+        }
+    });
 
-    // 1. Draw Chart
-    let chartData = [['Defect', 'Qty', { role: 'style' }]];
+    // Convert Object back to Array
+    let aggregatedList = Object.values(grouped);
+
+    // Recalculate Rate for Aggregated Qty
+    aggregatedList.forEach(d => {
+        d.rate = totalInput ? ((d.qty / totalInput) * 100).toFixed(2) + "%" : "0%";
+    });
+
+    // 2. SORT (Highest Qty First)
+    aggregatedList.sort((a,b) => b.qty - a.qty);
+    let top3 = aggregatedList.slice(0, 3);
+
+    // 3. DRAW CHART
+    let chartData = [['Defect', 'Total Qty', { role: 'style' }]];
     let colors = ['#dc3545', '#fd7e14', '#ffc107'];
     top3.forEach((d, i) => {
         chartData.push([d.name, d.qty, colors[i] || '#0d6efd']);
@@ -351,17 +379,18 @@ function renderTop3(list, totalInput) {
     
     let wrapper = new google.visualization.ColumnChart(document.getElementById('top3_chart'));
     wrapper.draw(google.visualization.arrayToDataTable(chartData), {
-        title: 'Top 3 Defects Trend',
+        title: 'Top 3 Defects (Aggregated)',
         legend: { position: "none" },
         chartArea: {width:'80%', height:'70%'},
         vAxis: { minValue: 0 }
     });
 
-    // 2. Render Table
+    // 4. RENDER TABLE
     let tbody = document.getElementById('top3_tbody');
     tbody.innerHTML = "";
     
     top3.forEach((d, i) => {
+        // Use the original name to fetch action plan
         let existingAction = actionPlanMap[d.name] || "";
         tbody.innerHTML += `
             <tr>
@@ -415,7 +444,6 @@ function showPreview() {
         let type = r.querySelector('.d-type').value;
         let rate = r.querySelector('.d-rate').value;
         let ana = r.querySelector('.d-ana').value;
-        // Get Action Plan from Map
         let act = actionPlanMap[name] || "";
         
         let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
@@ -543,7 +571,7 @@ function edit(i, r) {
     document.getElementById('e_prep').value = r[7];
     
     document.getElementById('defect_wrapper').innerHTML = "";
-    actionPlanMap = {}; // Reset map
+    actionPlanMap = {}; 
     try { 
         JSON.parse(r[8]).forEach(d => addDefectRow(d)); 
     } catch(e){}
