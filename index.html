@@ -51,10 +51,8 @@
   .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 850px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-  
-  /* PREVIEW BODY - Adjusted for scroll */
-  .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background: #ffffff; } 
-  
+  /* PDF Fix: Background White */
+  .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background: #fff; } 
   .preview-footer { padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
   
   .doc-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -68,6 +66,9 @@
   .btn-main { width: 100%; padding: 15px; background: #0d6efd; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
   .btn-ai { background: linear-gradient(135deg, #6f42c1, #8e44ad); }
 
+  /* Utility */
+  .no-print { } /* Used to hide elements during PDF generation if needed manually */
+
   #loader { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 1000; text-align: center; padding-top: 200px; font-size: 20px; font-weight: bold; color: var(--primary); }
 </style>
 </head>
@@ -78,8 +79,8 @@
 <div class="container">
   <!-- Header -->
   <div class="header-box">
-      <!-- Added crossorigin="anonymous" to fix CORS issue in PDF -->
-      <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="logo" alt="Califonix" crossorigin="anonymous">
+      <!-- Use text logo or Base64 to avoid CORS in PDF -->
+      <h2 style="color:#0d6efd; margin:0; font-weight:900;">CALIF<span style="color:#dc3545">O</span>NIX</h2>
       <div>
           <h3 style="margin:0; text-align:right;">Production & Quality System</h3>
           <small style="color:#777;">Smart Manufacturing Dashboard</small>
@@ -152,6 +153,7 @@
           </div>
       </div>
 
+      <!-- Top 3 Section -->
       <div id="top3_container" class="top3-box">
           <h4 style="margin-top:0; color:#0d6efd;"><i class="fas fa-chart-pie"></i> Top 3 Defects & Action Plan</h4>
           <div class="top3-grid">
@@ -168,33 +170,38 @@
       <button class="btn-main" style="margin-top:20px;" onclick="showPreview()">👁️ Preview & Submit</button>
   </div>
 
-  <!-- 3. REPORT TAB -->
+  <!-- 3. REPORT TAB (Enhanced) -->
   <div id="report" class="tab-page" style="display:none;">
       <div class="form-grid no-print">
           <div><label>From</label><input type="date" id="r_from"></div>
           <div><label>To</label><input type="date" id="r_to"></div>
           <div style="display:flex; align-items:end; gap:10px;">
               <button class="btn-main" style="padding:10px;" onclick="genReport('overall')">Generate</button>
-              <button class="btn-sm" style="background:#28a745; padding:12px;" onclick="dlPdf('rep_area', 'Overall_Report')">Download PDF</button>
+              <button class="btn-sm" style="background:#28a745; padding:12px;" onclick="downloadReportPDF()"><i class="fas fa-download"></i> Download Report</button>
           </div>
       </div>
 
-      <div id="rep_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px;">
-          <h2 style="text-align:center; border-bottom:2px solid #333; padding-bottom:10px;">OVERALL QUALITY REPORT</h2>
-          <p style="text-align:center;"><b>Period:</b> <span id="r_period"></span></p>
+      <div id="rep_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px; background:white;">
+          <div style="border-bottom:2px solid #333; margin-bottom:20px; padding-bottom:10px;">
+              <h2 style="text-align:center; color:#007bff; margin:0;">OVERALL QUALITY REPORT</h2>
+              <p style="text-align:center; margin:5px 0;"><b>Period:</b> <span id="r_period"></span></p>
+          </div>
 
           <table style="width:100%; border:1px solid #ddd; margin-bottom:20px; text-align:center;">
               <tr style="background:#f8f9fa;">
-                  <td style="padding:10px;"><b>Total Production:</b> <br><span id="r_inp">0</span></td>
-                  <td style="padding:10px;"><b>Total Defects:</b> <br><span id="r_def">0</span></td>
-                  <td style="padding:10px;"><b>Avg Process Rej:</b> <br><span id="r_proc" style="color:red">0%</span></td>
+                  <td style="padding:15px;"><b>Total Production:</b> <br><span id="r_inp" style="font-size:18px;">0</span></td>
+                  <td style="padding:15px;"><b>Total Defects:</b> <br><span id="r_def" style="font-size:18px;">0</span></td>
+                  <td style="padding:15px;"><b>RMD Rej:</b> <br><span id="r_rmd_rate" style="color:#b38600; font-size:18px;">0%</span></td>
+                  <td style="padding:15px;"><b>Process Rej:</b> <br><span id="r_proc_rate" style="color:red; font-size:18px;">0%</span></td>
               </tr>
           </table>
+
           <div class="chart-flex">
               <div class="chart-box" id="chart_trend"></div>
               <div class="chart-box" id="chart_pareto"></div>
           </div>
-          <h4>🏆 Top 5 Production Issues</h4>
+          
+          <h4 style="border-bottom:1px solid #eee; padding-bottom:5px;">🏆 Top 5 Production Issues</h4>
           <div id="r_list"></div>
       </div>
   </div>
@@ -207,12 +214,15 @@
           <div><label>Model</label><select id="m_select"><option>Loading...</option></select></div>
           <div style="display:flex; align-items:end; gap:10px;">
               <button class="btn-main" style="padding:10px; background:#6f42c1;" onclick="genReport('model')">View</button>
-              <button class="btn-sm" style="background:#28a745; padding:12px;" onclick="dlPdf('mod_area', 'Model_Report')">PDF</button>
+              <button class="btn-sm" style="background:#28a745; padding:12px;" onclick="downloadReportPDF('model')">PDF</button>
           </div>
       </div>
-      <div id="mod_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px;">
+      
+      <div id="mod_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px; background:white;">
           <h2 style="text-align:center; border-bottom:2px solid #6f42c1; padding-bottom:10px; color:#6f42c1;">MODEL WISE REPORT</h2>
           <h3 style="text-align:center;" id="m_title"></h3>
+          <p style="text-align:center;"><b>Period:</b> <span id="m_period"></span></p>
+          
           <div class="chart-flex">
               <div class="chart-box" id="m_trend"></div>
               <div class="chart-box" id="m_pareto"></div>
@@ -231,7 +241,7 @@
             <span style="cursor:pointer; font-size:20px;" onclick="closeModal()">✖</span>
         </div>
         <div class="preview-body" id="prevBody">
-            <!-- Content injected here -->
+            <!-- Content will be injected here -->
         </div>
         <div class="preview-footer">
             <button class="btn-sm" style="background:#17a2b8; font-size:14px; padding:10px 20px;" onclick="downloadPreviewPDF(event)"><i class="fas fa-file-pdf"></i> Download PDF</button>
@@ -247,7 +257,7 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// 🔴 Replace with YOUR Deployment URL
+// 🔴 Replace with YOUR URL
 const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; 
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
@@ -258,8 +268,12 @@ let top3Chart = null;
 google.charts.load('current', {'packages':['corechart']});
 
 window.onload = () => {
-    document.getElementById('e_date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('d_from').value = new Date().toISOString().split('T')[0];
+    let today = new Date().toISOString().split('T')[0];
+    document.getElementById('e_date').value = today;
+    document.getElementById('d_from').value = today;
+    document.getElementById('r_from').value = today;
+    document.getElementById('r_to').value = today;
+    
     loadData();
     addDefectRow();
 };
@@ -467,7 +481,122 @@ function renderTop3(list, totalInput) {
 }
 
 // ==========================================
-// PREVIEW FUNCTION
+// REPORT GENERATION (FILTER & RENDER)
+// ==========================================
+function genReport(mode) {
+    let from, to, targetModel = null;
+    let area = mode === 'overall' ? 'rep_area' : 'mod_area';
+    
+    if(mode === 'overall') {
+        from = document.getElementById('r_from').value;
+        to = document.getElementById('r_to').value;
+        document.getElementById('r_period').innerText = `${from} to ${to}`;
+    } else {
+        from = document.getElementById('m_from').value;
+        to = document.getElementById('m_to').value;
+        targetModel = document.getElementById('m_select').value;
+        document.getElementById('m_title').innerText = targetModel;
+        document.getElementById('m_period').innerText = `${from} to ${to}`;
+    }
+
+    if(!from || !to) return alert("Select dates first!");
+    
+    document.getElementById(area).style.display = 'block';
+
+    // 1. Filter Data & Aggregate
+    let totIn = 0, totRmd = 0, totProc = 0, totDef = 0;
+    let dateMap = {}, defectMap = {};
+    let uniqueBatches = new Set(); // To avoid double counting input
+
+    allData.forEach(r => {
+        let rDate = r[1];
+        if(rDate < from || rDate > to) return;
+        if(targetModel && r[3] !== targetModel) return;
+
+        let bid = r[0]; // BatchID
+        let inp = +r[4] || 0;
+        let defName = r[5];
+        let type = r[6];
+        let qty = +r[7] || 0;
+
+        // Sum Input (Only once per batch)
+        if (!uniqueBatches.has(bid)) {
+            totIn += inp;
+            uniqueBatches.add(bid);
+            
+            // Date map for input (trend)
+            if(!dateMap[rDate]) dateMap[rDate] = { i: 0, d: 0 };
+            dateMap[rDate].i += inp;
+        }
+
+        // Sum Defects (If defect exists)
+        if(defName && defName !== "No Defect") {
+            totDef += qty;
+            if(type === 'RMD') totRmd += qty;
+            if(type === 'Process') totProc += qty;
+
+            // Date map for defects
+            if(!dateMap[rDate]) dateMap[rDate] = { i: 0, d: 0 };
+            dateMap[rDate].d += qty;
+
+            // Defect map for pareto
+            if(!defectMap[defName]) defectMap[defName] = 0;
+            defectMap[defName] += qty;
+        }
+    });
+
+    // 2. Render KPIs
+    if(mode === 'overall') {
+        document.getElementById('r_inp').innerText = totIn;
+        document.getElementById('r_def').innerText = totDef;
+        document.getElementById('r_rmd_rate').innerText = totIn ? ((totRmd/totIn)*100).toFixed(2)+"%" : "0%";
+        document.getElementById('r_proc_rate').innerText = totIn ? ((totProc/totIn)*100).toFixed(2)+"%" : "0%";
+        
+        drawReportCharts(dateMap, defectMap, 'chart_trend', 'chart_pareto');
+        renderReportList(defectMap, totIn, 'r_list');
+    } else {
+        drawReportCharts(dateMap, defectMap, 'm_trend', 'm_pareto');
+        renderReportList(defectMap, totIn, 'm_list');
+    }
+}
+
+function drawReportCharts(dMap, defMap, trendId, paretoId) {
+    // Trend Chart
+    let tData = [['Date', 'Defect Rate %']];
+    Object.keys(dMap).sort().forEach(d => {
+        let rate = dMap[d].i ? (dMap[d].d / dMap[d].i * 100) : 0;
+        tData.push([d, rate]);
+    });
+    new google.visualization.LineChart(document.getElementById(trendId)).draw(
+        google.visualization.arrayToDataTable(tData), 
+        { title: 'Date-wise Defect Rate Trend', legend: {position: 'bottom'} }
+    );
+
+    // Pareto Chart (Top 5)
+    let sorted = Object.entries(defMap).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    let pData = [['Defect', 'Qty']];
+    sorted.forEach(x => pData.push(x));
+    new google.visualization.ColumnChart(document.getElementById(paretoId)).draw(
+        google.visualization.arrayToDataTable(pData), 
+        { title: 'Top 5 Defects (Pareto)', legend: 'none' }
+    );
+}
+
+function renderReportList(defMap, totIn, divId) {
+    let sorted = Object.entries(defMap).sort((a,b)=>b[1]-a[1]);
+    let html = `<table class="doc-table"><thead><tr><th>Rank</th><th>Defect Name</th><th>Qty</th><th>Contribution %</th></tr></thead><tbody>`;
+    
+    sorted.forEach((x, i) => {
+        let rate = totIn ? ((x[1]/totIn)*100).toFixed(2)+"%" : "0%";
+        html += `<tr><td>#${i+1}</td><td>${x[0]}</td><td>${x[1]}</td><td>${rate}</td></tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    document.getElementById(divId).innerHTML = html;
+}
+
+// ==========================================
+// PDF DOWNLOAD FUNCTIONS
 // ==========================================
 function showPreview() {
     let stats = calcStats();
@@ -510,10 +639,9 @@ function showPreview() {
     let chartImg = (top3Chart && aggregated.length > 0) ? `<div style="text-align:center; margin:10px 0; border:1px solid #eee; padding:5px;"><img src="${top3Chart.getImageURI()}" style="width:100%; max-width:400px;"></div>` : "";
 
     let html = `
-        <div style="padding:20px; background:white;">
+        <div style="padding:30px; background:white; font-family:sans-serif;">
             <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
-                <!-- Crossorigin Added Here -->
-                <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;" crossorigin="anonymous">
+                <h2 style="color:#0d6efd; margin:0; margin-right:15px; font-weight:900;">CALIF<span style="color:#dc3545">O</span>NIX</h2>
                 <div><h3 style="margin:0; color:#007bff;">Production Report</h3><small>${d.date}</small></div>
             </div>
             
@@ -560,53 +688,43 @@ function showPreview() {
     document.getElementById('prevModal').style.display = "block";
 }
 
-// ---------------------------------------------
-// FIXED PDF DOWNLOAD FUNCTION (BLANK PAGE FIX)
-// ---------------------------------------------
 function downloadPreviewPDF(event) {
-    // Target Element
-    const element = document.getElementById('prevBody');
-    
-    // Save original styles to revert later
-    const originalMaxHeight = element.style.maxHeight;
-    const originalOverflow = element.style.overflowY;
-
-    // TEMPORARY FIX: Remove scroll constraints for PDF generation
-    element.style.maxHeight = 'none';
-    element.style.overflowY = 'visible';
-
-    // Button UI
     const btn = event.currentTarget;
     const oldText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
     btn.disabled = true;
 
-    // PDF Config
-    const opt = {
-        margin:       0.3,
-        filename:     'Production_Report.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
+    // Use Clone Method for Modal PDF
+    const content = document.getElementById('prevBody').innerHTML;
+    const pdfContainer = document.createElement('div');
+    pdfContainer.innerHTML = content;
+    pdfContainer.style.width = '800px'; 
+    pdfContainer.style.background = 'white';
+    pdfContainer.style.position = 'absolute';
+    pdfContainer.style.top = '-9999px';
+    pdfContainer.style.left = '0';
+    document.body.appendChild(pdfContainer);
 
-    // Generate
-    html2pdf().set(opt).from(element).save()
-        .then(() => {
-            // Restore UI and Styles
-            btn.innerHTML = oldText;
-            btn.disabled = false;
-            element.style.maxHeight = originalMaxHeight;
-            element.style.overflowY = originalOverflow;
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error creating PDF");
-            btn.innerHTML = oldText;
-            btn.disabled = false;
-            element.style.maxHeight = originalMaxHeight;
-            element.style.overflowY = originalOverflow;
-        });
+    html2pdf().set({
+        margin: 0.3, filename: 'Production_Preview.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    }).from(pdfContainer).save().then(() => {
+        document.body.removeChild(pdfContainer);
+        btn.innerHTML = oldText; btn.disabled = false;
+    });
+}
+
+function downloadReportPDF(mode) {
+    let id = mode === 'model' ? 'mod_area' : 'rep_area';
+    let name = mode === 'model' ? 'Model_Report.pdf' : 'Overall_Report.pdf';
+    let element = document.getElementById(id);
+    
+    html2pdf().set({
+        margin: 0.2, filename: name,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    }).from(element).save();
 }
 
 function closeModal() { document.getElementById('prevModal').style.display = "none"; }
@@ -658,8 +776,6 @@ async function aiFix(btn) {
     } catch(e) {}
     btn.innerText = "AI";
 }
-// Placeholder for report logic
-function genReport(mode) { alert("Use Dashboard Filter for Reports"); }
 </script>
 </body>
 </html>
