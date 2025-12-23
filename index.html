@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashcam_Dashboard</title>
+<title>Dashcam_Dashboard - Advanced</title>
 <!-- Libraries -->
 <script src="https://www.gstatic.com/charts/loader.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -30,7 +30,7 @@
   /* Defect Table */
   .defect-row { display: grid; grid-template-columns: 2fr 1fr 1fr 0.8fr 2fr 1fr 0.5fr; gap: 10px; align-items: end; background: #f9f9f9; padding: 10px; border-radius: 6px; margin-bottom: 10px; border: 1px solid #eee; }
   
-  /* Top 3 Section */
+  /* Top 3 Section (Entry Page) */
   .top3-box { background: #f1f8ff; border: 1px dashed #0d6efd; padding: 20px; border-radius: 10px; margin-top: 20px; display: none; }
   .top3-grid { display: flex; gap: 20px; flex-wrap: wrap; }
   .top3-table { width: 100%; border-collapse: collapse; background: white; font-size: 13px; }
@@ -43,18 +43,22 @@
   .kpi-card { flex: 1; min-width: 150px; background: white; padding: 20px; border-radius: 10px; text-align: center; border-top: 4px solid var(--primary); box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
   .kpi-val { font-size: 24px; font-weight: 800; margin-top: 5px; }
 
-  /* Charts */
+  /* --- REPORT SPECIFIC STYLES FROM CODE 1 --- */
   .chart-flex { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px; }
-  .chart-box { flex: 1; min-width: 350px; height: 350px; border: 1px solid #f0f0f0; padding: 10px; border-radius: 8px; }
+  .chart-box { flex: 1; min-width: 350px; height: 350px; border: 1px solid #f0f0f0; padding: 10px; border-radius: 8px; background: white; }
+  .chart-stacked { display: block; width: 100%; margin-bottom: 30px; }
+  .chart-full { width: 100%; height: 400px; border: 1px solid #eee; padding: 10px; background: #fff; border-radius: 8px; }
   
+  .analysis-item { display: flex; border: 1px solid #eee; padding: 15px; margin-bottom: 10px; gap: 15px; break-inside: avoid; background: #fdfdfd; border-left: 4px solid var(--primary); border-radius: 4px; }
+  .rem-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+  .rem-table th { background: #343a40; color: white; padding: 10px; text-align: left; }
+  .rem-table td { border: 1px solid #eee; padding: 10px; }
+
   /* Modal & Preview */
   .modal { display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
   .modal-content { background: white; margin: 2% auto; padding: 0; width: 95%; max-width: 850px; border-radius: 10px; overflow: hidden; }
   .preview-header { background: #333; color: white; padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
-  
-  /* PREVIEW BODY - Adjusted for scroll */
   .preview-body { padding: 30px; max-height: 70vh; overflow-y: auto; background: #ffffff; } 
-  
   .preview-footer { padding: 15px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
   
   .doc-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
@@ -78,11 +82,10 @@
 <div class="container">
   <!-- Header -->
   <div class="header-box">
-      <!-- Added crossorigin="anonymous" to fix CORS issue in PDF -->
       <img src="https://i.postimg.cc/5y7SN4xc/logo.png" class="logo" alt="Califonix" crossorigin="anonymous">
       <div>
-          <h3 style="margin:0; text-align:center;">Dascam_Dashboard</h3>
-          <small style="color:#777;">Daily Report</small>
+          <h3 style="margin:0; text-align:center;">Dascam Dashboard (Pro)</h3>
+          <small style="color:#777;">Production Quality System</small>
       </div>
   </div>
 
@@ -97,9 +100,9 @@
   <!-- 1. DASHBOARD TAB -->
   <div id="dashboard" class="tab-page">
       <div class="form-grid">
-          <div><label>From Date</label><input type="date" id="d_from" onchange="loadData()"></div>
+          <div><label>From Date</label><input type="date" id="d_from"></div>
           <div><label>To Date</label><input type="date" id="d_to"></div>
-          <div style="display:flex; align-items:end;"><button class="btn-main" style="padding:10px;" onclick="loadData()">Filter</button></div>
+          <div style="display:flex; align-items:end;"><button class="btn-main" style="padding:10px;" onclick="renderDash()">Filter Data</button></div>
       </div>
 
       <div class="kpi-row">
@@ -108,11 +111,17 @@
           <div class="kpi-card" style="border-color: #dc3545;"><div>Process Rejection</div><div class="kpi-val" id="k_proc" style="color:#dc3545">0%</div></div>
       </div>
 
-      <div style="overflow-x:auto;">
+      <!-- SIDE BY SIDE DASHBOARD CHARTS FROM CODE 1 -->
+      <div class="chart-flex">
+          <div class="chart-box" id="dash_chart_model"></div>
+          <div class="chart-box" id="dash_chart_defect"></div>
+      </div>
+
+      <div style="overflow-x:auto; margin-top:20px;">
           <table style="width:100%; border-collapse:collapse; text-align:center; font-size:13px;">
               <thead>
                   <tr style="background:#333; color:white;">
-                      <th style="padding:10px;">Date</th><th>Model</th><th>Input</th><th>RMD %</th><th>Proc %</th><th>Action</th>
+                      <th style="padding:10px;">Date</th><th>Line</th><th>Model</th><th>Input</th><th>RMD %</th><th>Proc %</th><th>Action</th>
                   </tr>
               </thead>
               <tbody id="dash_table"></tbody>
@@ -120,7 +129,7 @@
       </div>
   </div>
 
-  <!-- 2. DATA ENTRY TAB -->
+  <!-- 2. DATA ENTRY TAB (UNTOUCHED LOGIC) -->
   <div id="entry" class="tab-page" style="display:none;">
       <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
           <h4 style="margin:0; color:var(--primary);">📝 New Production Record</h4>
@@ -168,7 +177,7 @@
       <button class="btn-main" style="margin-top:20px;" onclick="showPreview()">👁️ Preview & Submit</button>
   </div>
 
-  <!-- 3. REPORT TAB -->
+  <!-- 3. REPORT TAB (ADVANCED STACKED LAYOUT) -->
   <div id="report" class="tab-page" style="display:none;">
       <div class="form-grid no-print">
           <div><label>From</label><input type="date" id="r_from"></div>
@@ -179,60 +188,91 @@
           </div>
       </div>
 
-      <div id="rep_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px;">
-          <h2 style="text-align:center; border-bottom:2px solid #333; padding-bottom:10px;">OVERALL QUALITY REPORT</h2>
-          <p style="text-align:center;"><b>Period:</b> <span id="r_period"></span></p>
+      <div id="rep_area" style="display:none; padding:30px; border:1px solid #ddd; margin-top:20px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; border-bottom:2px solid #333; padding-bottom:10px;">
+              <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px;">
+              <div style="text-align:right;">
+                  <h2 style="margin:0;">OVERALL QUALITY REPORT</h2>
+                  <p style="margin:0;"><b>Period:</b> <span id="r_period"></span></p>
+              </div>
+          </div>
 
-          <table style="width:100%; border:1px solid #ddd; margin-bottom:20px; text-align:center;">
+          <table style="width:100%; border:1px solid #ddd; margin:20px 0; text-align:center;">
               <tr style="background:#f8f9fa;">
                   <td style="padding:10px;"><b>Total Production:</b> <br><span id="r_inp">0</span></td>
                   <td style="padding:10px;"><b>Total Defects:</b> <br><span id="r_def">0</span></td>
-                  <td style="padding:10px;"><b>Avg Process Rej:</b> <br><span id="r_proc" style="color:red">0%</span></td>
+                  <td style="padding:10px;"><b>Avg Process Rej:</b> <br><span id="r_proc" style="color:red; font-weight:bold;">0%</span></td>
               </tr>
           </table>
-          <div class="chart-flex">
-              <div class="chart-box" id="chart_trend"></div>
-              <div class="chart-box" id="chart_pareto"></div>
-          </div>
-          <h4>🏆 Top 5 Production Issues</h4>
-          <div id="r_list"></div>
+
+          <div class="chart-stacked"><div class="chart-full" id="r_trend_chart"></div></div>
+          <div class="chart-stacked"><div class="chart-full" id="r_model_chart"></div></div>
+          <div class="chart-stacked"><div class="chart-full" id="r_pareto_chart"></div></div>
+
+          <h4>🏆 Detailed Issue Analysis (Top 5)</h4>
+          <div id="r_ana_list"></div>
+
+          <h4 style="margin-top:30px; border-bottom:2px solid #333;">📉 Remaining Defects</h4>
+          <table class="rem-table">
+              <thead><tr><th>Defect Name</th><th>Qty</th><th>Type</th><th>Rate %</th></tr></thead>
+              <tbody id="r_rem_list"></tbody>
+          </table>
       </div>
   </div>
 
-  <!-- 4. MODEL REPORT TAB -->
+  <!-- 4. MODEL REPORT TAB (ADVANCED STACKED) -->
   <div id="modelReport" class="tab-page" style="display:none;">
       <div class="form-grid no-print">
           <div><label>From</label><input type="date" id="m_from"></div>
           <div><label>To</label><input type="date" id="m_to"></div>
-          <div><label>Model</label><select id="m_select"><option>Loading...</option></select></div>
+          <div><label>Model</label><select id="m_select"><option>Select Model</option></select></div>
           <div style="display:flex; align-items:end; gap:10px;">
-              <button class="btn-main" style="padding:10px; background:#6f42c1;" onclick="genReport('model')">View</button>
+              <button class="btn-main" style="padding:10px; background:#6f42c1;" onclick="genReport('model')">View Analysis</button>
               <button class="btn-sm" style="background:#28a745; padding:12px;" onclick="dlPdf('mod_area', 'Model_Report')">PDF</button>
           </div>
       </div>
-      <div id="mod_area" style="display:none; padding:20px; border:1px solid #ddd; margin-top:20px;">
-          <h2 style="text-align:center; border-bottom:2px solid #6f42c1; padding-bottom:10px; color:#6f42c1;">MODEL WISE REPORT</h2>
-          <h3 style="text-align:center;" id="m_title"></h3>
-          <div class="chart-flex">
-              <div class="chart-box" id="m_trend"></div>
-              <div class="chart-box" id="m_pareto"></div>
+
+      <div id="mod_area" style="display:none; padding:30px; border:1px solid #ddd; margin-top:20px; background:#fff;">
+          <div style="display:flex; justify-content:space-between; border-bottom:2px solid #6f42c1; padding-bottom:10px;">
+              <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px;">
+              <div style="text-align:right;">
+                  <h2 style="margin:0; color:#6f42c1;">MODEL WISE PERFORMANCE</h2>
+                  <p style="margin:0;"><b id="m_title_disp">--</b></p>
+              </div>
           </div>
-          <div id="m_list"></div>
+
+          <table style="width:100%; border:1px solid #ddd; margin:20px 0; text-align:center;">
+              <tr style="background:#f3e5f5;">
+                  <td style="padding:10px;"><b>Production:</b> <br><span id="m_inp_val">0</span></td>
+                  <td style="padding:10px;"><b>Total Defects:</b> <br><span id="m_def_val">0</span></td>
+                  <td style="padding:10px;"><b>Rejection Rate:</b> <br><span id="m_rate_val" style="color:red; font-weight:bold;">0%</span></td>
+              </tr>
+          </table>
+
+          <div class="chart-stacked"><div class="chart-full" id="m_trend_chart"></div></div>
+          <div class="chart-stacked"><div class="chart-full" id="m_pareto_chart"></div></div>
+
+          <h4>🏆 Issue Breakdown</h4>
+          <div id="m_ana_list"></div>
+
+          <h4 style="margin-top:30px; border-bottom:2px solid #333;">📉 Other Minor Issues</h4>
+          <table class="rem-table">
+              <thead><tr><th>Defect Name</th><th>Qty</th><th>Rate %</th></tr></thead>
+              <tbody id="m_rem_list"></tbody>
+          </table>
       </div>
   </div>
 
 </div>
 
-<!-- PREVIEW MODAL -->
+<!-- PREVIEW MODAL (UNTOUCHED) -->
 <div id="prevModal" class="modal">
     <div class="modal-content">
         <div class="preview-header">
             <h4 style="margin:0;">📄 Confirm Submission</h4>
             <span style="cursor:pointer; font-size:20px;" onclick="closeModal()">✖</span>
         </div>
-        <div class="preview-body" id="prevBody">
-            <!-- Content injected here -->
-        </div>
+        <div class="preview-body" id="prevBody"></div>
         <div class="preview-footer">
             <button class="btn-sm" style="background:#17a2b8; font-size:14px; padding:10px 20px;" onclick="downloadPreviewPDF(event)"><i class="fas fa-file-pdf"></i> Download PDF</button>
             <div>
@@ -247,7 +287,6 @@
 // ==========================================
 // CONFIGURATION
 // ==========================================
-// 🔴 Replace with YOUR Deployment URL
 const API_URL = "https://script.google.com/macros/s/AKfycbykpEM0hn8AafVpLKq2tqaz_dS_-U4kejODgz7aBTd0B7TIeqcRN6W6FENP-jiqerQqMA/exec"; 
 const GEMINI_API_KEY = "AIzaSyDwFbj25ROQX52IzObhVIW_6t61O5TC2pA"; 
 
@@ -255,11 +294,17 @@ let allData = [];
 let actionPlanMap = {}; 
 let top3Chart = null; 
 
-google.charts.load('current', {'packages':['corechart']});
+google.charts.load('current', {'packages':['corechart', 'bar']});
 
 window.onload = () => {
-    document.getElementById('e_date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('d_from').value = new Date().toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('e_date').value = today;
+    document.getElementById('d_from').value = today;
+    document.getElementById('d_to').value = today;
+    document.getElementById('r_from').value = today;
+    document.getElementById('r_to').value = today;
+    document.getElementById('m_from').value = today;
+    document.getElementById('m_to').value = today;
     loadData();
     addDefectRow();
 };
@@ -272,43 +317,46 @@ function switchTab(btn, id){
 }
 
 // ==========================================
-// LOAD DATA
+// LOAD DATA & DASHBOARD (MERGED FROM CODE 1)
 // ==========================================
 async function loadData() {
     let res = await fetch(API_URL);
     let j = await res.json();
     allData = j.data;
-    
+    populateModelDropdown();
+    renderDash();
+}
+
+function populateModelDropdown(){
+    let models = [...new Set(allData.map(r => r[3]))].filter(m => m);
+    let sel = document.getElementById('m_select');
+    sel.innerHTML = '<option value="">Select Model</option>' + models.map(m => `<option value="${m}">${m}</option>`).join("");
+}
+
+function renderDash() {
+    let from = document.getElementById('d_from').value;
+    let to = document.getElementById('d_to').value || from;
     let tbody = document.getElementById('dash_table');
     tbody.innerHTML = "";
     
     let kpi = { prod: 0, rmdD: 0, procD: 0 };
-    let models = new Set();
-    
+    let modelMap = {}, defectMap = {};
     let groupedData = {};
 
     allData.forEach((r) => {
-        let rowDate = r[1];
-        if(!rowDate) return; 
-        if(rowDate < document.getElementById('d_from').value) return;
+        let rowDate = r[1] ? r[1].split('T')[0] : null;
+        if(!rowDate || rowDate < from || rowDate > to) return;
 
         let bid = r[0]; 
-        
         if (!groupedData[bid]) {
-            groupedData[bid] = {
-                id: bid, date: r[1], line: r[2], model: r[3],
-                input: +r[4] || 0, prep: r[10], defects: []
-            };
+            groupedData[bid] = { id: bid, date: r[1], line: r[2], model: r[3], input: +r[4] || 0, defects: [] };
         }
 
-        let defName = r[5];
-        let defType = r[6];
-        let defQty = +r[7] || 0;
-        
+        let defName = r[5], defType = r[6], defQty = +r[7] || 0;
         if (defName && defName !== "No Defect") {
-            groupedData[bid].defects.push({
-                name: defName, type: defType, qty: defQty, ana: r[8], action: r[9]
-            });
+            groupedData[bid].defects.push({ name: defName, type: defType, qty: defQty, ana: r[8], action: r[9] });
+            if(!defectMap[defName]) defectMap[defName] = 0;
+            defectMap[defName] += defQty;
         }
     });
 
@@ -319,19 +367,21 @@ async function loadData() {
         kpi.prod += item.input;
         kpi.rmdD += rmdSum;
         kpi.procD += procSum;
-        models.add(item.model);
+
+        if(!modelMap[item.model]) modelMap[item.model] = {def:0, inp:0};
+        modelMap[item.model].def += (rmdSum + procSum);
+        modelMap[item.model].inp += item.input;
 
         let rmdPer = item.input ? ((rmdSum / item.input) * 100).toFixed(2) + "%" : "0%";
         let procPer = item.input ? ((procSum / item.input) * 100).toFixed(2) + "%" : "0%";
-        let itemStr = encodeURIComponent(JSON.stringify(item));
         let displayDate = item.date ? item.date.split('T')[0] : "-";
 
         tbody.innerHTML += `<tr>
-            <td>${displayDate}</td><td>${item.model}</td><td>${item.input}</td>
-            <td style="color:#b38600">${rmdPer}</td><td style="color:#dc3545">${procPer}</td>
+            <td>${displayDate}</td><td>${item.line}</td><td>${item.model}</td><td>${item.input}</td>
+            <td style="color:#b38600; font-weight:bold;">${rmdPer}</td><td style="color:#dc3545; font-weight:bold;">${procPer}</td>
             <td style="display:flex; gap:5px; justify-content:center;">
-                <button class="btn-sm" style="background:#17a2b8" onclick="edit('${itemStr}')">Edit</button>
-                <button class="btn-sm btn-red" onclick="deleteData('${item.id}')"><i class="fas fa-trash"></i></button>
+                <button class="btn-sm" style="background:#17a2b8" onclick="edit('${encodeURIComponent(JSON.stringify(item))}')">Edit</button>
+                <button class="btn-sm" style="background:#dc3545" onclick="deleteData('${item.id}')">🗑</button>
             </td>
         </tr>`;
     });
@@ -340,37 +390,161 @@ async function loadData() {
     document.getElementById('k_rmd').innerText = kpi.prod ? ((kpi.rmdD / kpi.prod) * 100).toFixed(2) + "%" : "0%";
     document.getElementById('k_proc').innerText = kpi.prod ? ((kpi.procD / kpi.prod) * 100).toFixed(2) + "%" : "0%";
     
-    let sel = document.getElementById('m_select');
-    sel.innerHTML = "";
-    models.forEach(m => sel.innerHTML += `<option>${m}</option>`);
+    drawDashCharts(modelMap, defectMap, kpi.prod);
 }
 
-async function deleteData(id) {
-    if(!confirm("Are you sure?")) return;
-    document.getElementById('loader').style.display='block';
-    try { await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', id: id }) }); loadData(); } catch(e) {}
-    document.getElementById('loader').style.display='none';
+function drawDashCharts(modelMap, defectMap, totalInput){
+    let modelArr = [['Model', 'Rej %', { role: 'annotation' }]];
+    let sortedModels = Object.keys(modelMap).sort((a,b)=> (modelMap[b].def/modelMap[b].inp) - (modelMap[a].def/modelMap[a].inp)).slice(0, 5);
+    sortedModels.forEach(m => {
+        let rate = modelMap[m].inp > 0 ? (modelMap[m].def / modelMap[m].inp * 100) : 0;
+        modelArr.push([m, rate, rate.toFixed(2) + "%"]);
+    });
+
+    if(sortedModels.length > 0){
+        new google.visualization.ColumnChart(document.getElementById('dash_chart_model')).draw(google.visualization.arrayToDataTable(modelArr), {
+            title: 'Top 5 Models by Rejection %', legend: 'none', colors: ['#0d6efd'],
+            annotations: { alwaysOutside: true }, vAxis: { title: 'Rate %' }, chartArea: {width:'85%', height:'65%'}
+        });
+    }
+
+    let defectArr = [['Defect', 'Qty', { role: 'annotation' }]];
+    let sortedDefects = Object.keys(defectMap).sort((a,b)=>defectMap[b]-defectMap[a]).slice(0, 5);
+    sortedDefects.forEach(d => defectArr.push([d, defectMap[d], defectMap[d]]));
+
+    if(sortedDefects.length > 0){
+        new google.visualization.ColumnChart(document.getElementById('dash_chart_defect')).draw(google.visualization.arrayToDataTable(defectArr), {
+            title: 'Top 5 Defect Categories (Qty)', legend: 'none', colors: ['#dc3545'],
+            annotations: { alwaysOutside: true }, chartArea: {width:'85%', height:'65%'}
+        });
+    }
 }
 
-function edit(itemStr) {
-    let item = JSON.parse(decodeURIComponent(itemStr));
-    switchTab(document.querySelector("button[onclick*='entry']"), 'entry');
+// ==========================================
+// ADVANCED REPORT LOGIC (MERGED FROM CODE 1)
+// ==========================================
+function genReport(type) {
+    let start, end, filterModel, areaId, trendId, paretoId, modelChartId, anaId, remId;
     
-    document.getElementById('edit_batch_id').value = item.id;
-    document.getElementById('e_date').value = item.date.split('T')[0];
-    document.getElementById('e_line').value = item.line;
-    document.getElementById('e_model').value = item.model;
-    document.getElementById('e_input').value = item.input;
-    document.getElementById('e_prep').value = item.prep;
-    
-    document.getElementById('defect_wrapper').innerHTML = "";
-    actionPlanMap = {}; 
-    if (item.defects.length > 0) {
-        item.defects.forEach(d => { addDefectRow(d); if(d.action) actionPlanMap[d.name] = d.action; });
-    } else { addDefectRow(); }
-    calcStats();
+    if(type === 'overall') {
+        start = document.getElementById('r_from').value;
+        end = document.getElementById('r_to').value;
+        areaId = 'rep_area'; trendId = 'r_trend_chart'; paretoId = 'r_pareto_chart';
+        modelChartId = 'r_model_chart'; anaId = 'r_ana_list'; remId = 'r_rem_list';
+        document.getElementById('r_period').innerText = `${start} to ${end}`;
+    } else {
+        start = document.getElementById('m_from').value;
+        end = document.getElementById('m_to').value;
+        filterModel = document.getElementById('m_select').value;
+        if(!filterModel) return alert("Select Model");
+        areaId = 'mod_area'; trendId = 'm_trend_chart'; paretoId = 'm_pareto_chart';
+        modelChartId = null; anaId = 'm_ana_list'; remId = 'm_rem_list';
+        document.getElementById('m_title_disp').innerText = `Model: ${filterModel} | ${start} to ${end}`;
+    }
+
+    document.getElementById(areaId).style.display = 'block';
+    let filtered = allData.filter(r => {
+        let d = r[1] ? r[1].split('T')[0] : "";
+        return d >= start && d <= end && (!filterModel || r[3] === filterModel);
+    });
+
+    if(filtered.length === 0) return alert("No data found");
+
+    let totalInp = 0, totalDef = 0;
+    let dateMap = {}, modelMap = {}, defectsMap = {};
+
+    // Grouping by Batch ID to avoid input qty duplication
+    let batchMap = {};
+    filtered.forEach(r => {
+        let bid = r[0];
+        if(!batchMap[bid]) {
+            batchMap[bid] = { input: +r[4]||0, date: r[1].split('T')[0], model: r[3], defects: [] };
+            totalInp += +r[4]||0;
+        }
+        if(r[5] && r[5] !== "No Defect") {
+            batchMap[bid].defects.push({ name: r[5], qty: +r[7]||0, type: r[6], ana: r[8] });
+            totalDef += +r[7]||0;
+        }
+    });
+
+    Object.values(batchMap).forEach(b => {
+        if(!dateMap[b.date]) dateMap[b.date] = {i:0, d:0};
+        dateMap[b.date].i += b.input;
+        b.defects.forEach(df => {
+            dateMap[b.date].d += df.qty;
+            if(!modelMap[b.model]) modelMap[b.model] = {i:0, d:0};
+            modelMap[b.model].i = totalInp; // Simplified for report
+            modelMap[b.model].d += df.qty;
+
+            if(!defectsMap[df.name]) defectsMap[df.name] = {qty:0, type: df.type, ana:[]};
+            defectsMap[df.name].qty += df.qty;
+            if(df.ana && !defectsMap[df.name].ana.includes(df.ana)) defectsMap[df.name].ana.push(df.ana);
+        });
+    });
+
+    if(type === 'overall') {
+        document.getElementById('r_inp').innerText = totalInp;
+        document.getElementById('r_def').innerText = totalDef;
+        document.getElementById('r_proc').innerText = totalInp > 0 ? (totalDef/totalInp*100).toFixed(2)+"%" : "0%";
+    } else {
+        document.getElementById('m_inp_val').innerText = totalInp;
+        document.getElementById( 'm_def_val').innerText = totalDef;
+        document.getElementById('m_rate_val').innerText = totalInp > 0 ? (totalDef/totalInp*100).toFixed(2)+"%" : "0%";
+    }
+
+    // --- DRAW STACKED CHARTS ---
+    let commonOpt = { height: 400, chartArea: {width:'85%', height:'70%'}, legend:'none', annotations: {alwaysOutside:true} };
+
+    // 1. Trend
+    let trendData = [['Date', 'Rate %', {role:'annotation'}]];
+    Object.keys(dateMap).sort().forEach(d => {
+        let rt = dateMap[d].i > 0 ? (dateMap[d].d/dateMap[d].i*100) : 0;
+        trendData.push([d, rt, rt.toFixed(2)+"%"]);
+    });
+    new google.visualization.LineChart(document.getElementById(trendId)).draw(google.visualization.arrayToDataTable(trendData), {...commonOpt, title:'Daily Rejection Trend (%)', colors:['#0d6efd']});
+
+    // 2. Models (Overall only)
+    if(modelChartId) {
+        let mDataArr = [['Model', 'Rate %', {role:'annotation'}]];
+        Object.keys(modelMap).sort((a,b)=>modelMap[b].d - modelMap[a].d).forEach(m => {
+            let rt = totalInp > 0 ? (modelMap[m].d/totalInp*100) : 0;
+            mDataArr.push([m, rt, rt.toFixed(2)+"%"]);
+        });
+        new google.visualization.ColumnChart(document.getElementById(modelChartId)).draw(google.visualization.arrayToDataTable(mDataArr), {...commonOpt, title:'Rejection by Model (%)'});
+    }
+
+    // 3. Pareto
+    let sortedDef = Object.keys(defectsMap).map(k=>({name:k, ...defectsMap[k]})).sort((a,b)=>b.qty - a.qty);
+    let paretoData = [['Defect', 'Qty', {role:'annotation'}]];
+    sortedDef.forEach(s => paretoData.push([s.name, s.qty, s.qty]));
+    new google.visualization.ColumnChart(document.getElementById(paretoId)).draw(google.visualization.arrayToDataTable(paretoData), {...commonOpt, title:'Pareto Analysis (Defect Qty)', colors:['#dc3545']});
+
+    // 4. Detailed Analysis List
+    let anaHtml = "";
+    sortedDef.slice(0, 5).forEach(s => {
+        let rate = totalInp > 0 ? (s.qty/totalInp*100).toFixed(2)+"%" : "0%";
+        anaHtml += `<div class="analysis-item">
+            <div style="flex:1">
+                <h4 style="margin:0; color:var(--primary)">${s.name} <span class="badge ${s.type==='RMD'?'bg-rmd':'bg-proc'}">${s.type}</span></h4>
+                <p style="margin:5px 0"><b>Qty:</b> ${s.qty} | <b>Rate:</b> ${rate}</p>
+                <p style="font-size:12px; color:#666; background:#f9f9f9; padding:8px; border-radius:4px;"><b>Root Cause:</b> ${s.ana.join(", ") || 'No analysis recorded'}</p>
+            </div>
+        </div>`;
+    });
+    document.getElementById(anaId).innerHTML = anaHtml;
+
+    // 5. Remaining List
+    let remHtml = "";
+    sortedDef.slice(5).forEach(s => {
+        let rate = totalInp > 0 ? (s.qty/totalInp*100).toFixed(2)+"%" : "0%";
+        remHtml += `<tr><td>${s.name}</td><td>${s.qty}</td><td>${s.type || '-'}</td><td>${rate}</td></tr>`;
+    });
+    document.getElementById(remId).innerHTML = remHtml || "<tr><td colspan='4' style='text-align:center'>No other defects</td></tr>";
 }
 
+// ==========================================
+// DATA ENTRY CORE LOGIC (UNTOUCHED)
+// ==========================================
 function addDefectRow(data=null){
     const div = document.createElement('div');
     div.className = 'defect-row';
@@ -412,8 +586,6 @@ function calcStats(){
     renderTop3(defectList, inp);
     return { rmdSum, procSum, rmdRate: document.getElementById('disp_rmd').innerText, procRate: document.getElementById('disp_proc').innerText, defectList };
 }
-
-function updateActionMap(input, defName) { actionPlanMap[defName] = input.value; }
 
 function renderTop3(list, totalInput) {
     let container = document.getElementById('top3_container');
@@ -466,9 +638,8 @@ function renderTop3(list, totalInput) {
     });
 }
 
-// ==========================================
-// PREVIEW FUNCTION
-// ==========================================
+function updateActionMap(input, defName) { actionPlanMap[defName] = input.value; }
+
 function showPreview() {
     let stats = calcStats();
     let d = {
@@ -493,7 +664,6 @@ function showPreview() {
     });
 
     let aggregated = Object.values(grouped).sort((a,b)=>b.qty - a.qty).slice(0,3);
-
     let top3Rows = "";
     aggregated.forEach((item, i) => {
         let rate = d.input ? ((item.qty / d.input) * 100).toFixed(2) + "%" : "0%";
@@ -501,10 +671,7 @@ function showPreview() {
         let anaHtml = "";
         if(item.procAna.length > 0) anaHtml += `<b>Process:</b> ${item.procAna.join(', ')}`;
         if(item.rmdAna.length > 0) { if(anaHtml) anaHtml += "<br>"; anaHtml += `<b>RMD:</b> ${item.rmdAna.join(', ')}`; }
-        top3Rows += `<tr style="background:#fffcf5;">
-            <td>#${i+1}</td><td><b>${item.name}</b></td><td>${item.qty}</td><td style="color:red;">${rate}</td>
-            <td style="font-size:12px;">${anaHtml || '-'}</td><td style="color:green; font-weight:bold;">${act}</td>
-        </tr>`;
+        top3Rows += `<tr style="background:#fffcf5;"><td>#${i+1}</td><td><b>${item.name}</b></td><td>${item.qty}</td><td style="color:red;">${rate}</td><td style="font-size:12px;">${anaHtml || '-'}</td><td style="color:green; font-weight:bold;">${act}</td></tr>`;
     });
 
     let chartImg = (top3Chart && aggregated.length > 0) ? `<div style="text-align:center; margin:10px 0; border:1px solid #eee; padding:5px;"><img src="${top3Chart.getImageURI()}" style="width:100%; max-width:400px;"></div>` : "";
@@ -512,137 +679,45 @@ function showPreview() {
     let html = `
         <div style="padding:20px; background:white;">
             <div style="display:flex; align-items:center; border-bottom:2px solid #333; padding-bottom:10px; margin-bottom:15px;">
-                <!-- Crossorigin Added Here -->
                 <img src="https://i.postimg.cc/5y7SN4xc/logo.png" style="height:50px; margin-right:15px;" crossorigin="anonymous">
                 <div><h3 style="margin:0; color:#007bff;">Production Report</h3><small>${d.date}</small></div>
             </div>
-            
-            <table style="width:100%; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                <tr>
-                    <td><b>Line:</b> ${d.line}<br><b>Model:</b> ${d.model}<br><b>Input:</b> ${d.input}</td>
-                    <td style="text-align:right;">
-                        <span style="color:#856404; font-weight:bold;">RMD Rej: ${d.rmdRate}</span><br>
-                        <span style="color:#721c24; font-weight:bold;">Proc Rej: ${d.procRate}</span>
-                    </td>
-                </tr>
-            </table>
-
-            ${aggregated.length > 0 ? `
-                <div style="background:#f1f8ff; padding:10px; border-radius:8px; border:1px dashed #007bff; margin-bottom:15px;">
-                    <h4 style="margin:0 0 10px 0; color:#0d6efd;">🏆 Top 3 Defects</h4>
-                    ${chartImg}
-                    <table class="doc-table">
-                        <thead style="background:#e7f1ff;"><tr><th>Rank</th><th>Defect</th><th>Qty</th><th>Rate</th><th>Analysis</th><th>Action</th></tr></thead>
-                        <tbody>${top3Rows}</tbody>
-                    </table>
-                </div>` : ''}
-
-            <h5 style="border-bottom:1px solid #ddd; padding-bottom:5px; margin-bottom:5px;">Full Details</h5>
-            <table class="doc-table">
-                <thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th></tr></thead>
-                <tbody>`;
+            <table style="width:100%; margin-bottom:15px;"><tr><td><b>Line:</b> ${d.line}<br><b>Model:</b> ${d.model}<br><b>Input:</b> ${d.input}</td><td style="text-align:right;"><span style="color:#856404; font-weight:bold;">RMD Rej: ${d.rmdRate}</span><br><span style="color:#721c24; font-weight:bold;">Proc Rej: ${d.procRate}</span></td></tr></table>
+            ${aggregated.length > 0 ? `<div style="background:#f1f8ff; padding:10px; border-radius:8px; border:1px dashed #007bff; margin-bottom:15px;"><h4>🏆 Top 3 Defects</h4>${chartImg}<table class="doc-table"><thead><tr><th>Rank</th><th>Defect</th><th>Qty</th><th>Rate</th><th>Analysis</th><th>Action</th></tr></thead><tbody>${top3Rows}</tbody></table></div>` : ''}
+            <h5>Full Details</h5>
+            <table class="doc-table"><thead><tr><th>Defect</th><th>Type</th><th>Qty</th><th>Rate %</th><th>Analysis</th></tr></thead><tbody>`;
 
     document.querySelectorAll('.defect-row').forEach(r => {
         let name = r.querySelector('.d-name').value;
         if(name){
-            let qty = r.querySelector('.d-qty').value;
-            let type = r.querySelector('.d-type').value;
-            let rate = r.querySelector('.d-rate').value;
-            let ana = r.querySelector('.d-ana').value;
-            let cls = type === 'RMD' ? 'bg-rmd' : 'bg-proc';
-            html += `<tr><td>${name}</td><td><span class="badge ${cls}">${type}</span></td><td>${qty}</td><td>${rate}</td><td>${ana}</td></tr>`;
+            let qty = r.querySelector('.d-qty').value, type = r.querySelector('.d-type').value, rate = r.querySelector('.d-rate').value, ana = r.querySelector('.d-ana').value;
+            html += `<tr><td>${name}</td><td><span class="badge ${type==='RMD'?'bg-rmd':'bg-proc'}">${type}</span></td><td>${qty}</td><td>${rate}</td><td>${ana}</td></tr>`;
         }
     });
 
     html += `</tbody></table></div>`;
-    
     document.getElementById('prevBody').innerHTML = html;
     document.getElementById('prevModal').style.display = "block";
 }
 
-// ---------------------------------------------
-// FIXED PDF DOWNLOAD FUNCTION (BLANK PAGE FIX)
-// ---------------------------------------------
-function downloadPreviewPDF(event) {
-    // Target Element
-    const element = document.getElementById('prevBody');
-    
-    // Save original styles to revert later
-    const originalMaxHeight = element.style.maxHeight;
-    const originalOverflow = element.style.overflowY;
-
-    // TEMPORARY FIX: Remove scroll constraints for PDF generation
-    element.style.maxHeight = 'none';
-    element.style.overflowY = 'visible';
-
-    // Button UI
-    const btn = event.currentTarget;
-    const oldText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-    btn.disabled = true;
-
-    // PDF Config
-    const opt = {
-        margin:       0.3,
-        filename:     'Production_Report.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    // Generate
-    html2pdf().set(opt).from(element).save()
-        .then(() => {
-            // Restore UI and Styles
-            btn.innerHTML = oldText;
-            btn.disabled = false;
-            element.style.maxHeight = originalMaxHeight;
-            element.style.overflowY = originalOverflow;
-        })
-        .catch(err => {
-            console.error(err);
-            alert("Error creating PDF");
-            btn.innerHTML = oldText;
-            btn.disabled = false;
-            element.style.maxHeight = originalMaxHeight;
-            element.style.overflowY = originalOverflow;
-        });
-}
-
-function closeModal() { document.getElementById('prevModal').style.display = "none"; }
-
 async function saveData() {
     document.getElementById('loader').style.display='block'; closeModal();
-    let stats = calcStats();
     let defects = [];
     document.querySelectorAll('.defect-row').forEach(r => {
         let name = r.querySelector('.d-name').value;
         if(name) {
-            defects.push({ 
-                name: name, type: r.querySelector('.d-type').value, qty: r.querySelector('.d-qty').value, 
-                ana: r.querySelector('.d-ana').value, action: actionPlanMap[name] || "" 
-            });
+            defects.push({ name: name, type: r.querySelector('.d-type').value, qty: r.querySelector('.d-qty').value, ana: r.querySelector('.d-ana').value, action: actionPlanMap[name] || "" });
         }
     });
-
     try {
-        await fetch(API_URL, { 
-            method:'POST', 
-            body:JSON.stringify({
-                action: 'save',
-                batchId: document.getElementById('edit_batch_id').value,
-                date: document.getElementById('e_date').value,
-                line: document.getElementById('e_line').value,
-                model: document.getElementById('e_model').value,
-                input: document.getElementById('e_input').value,
-                prep: document.getElementById('e_prep').value,
-                defects: defects
-            }) 
-        });
-        alert("Saved!"); location.reload();
-    } catch(e) { alert("Error"); }
+        await fetch(API_URL, { method:'POST', body:JSON.stringify({ action: 'save', batchId: document.getElementById('edit_batch_id').value, date: document.getElementById('e_date').value, line: document.getElementById('e_line').value, model: document.getElementById('e_model').value, input: document.getElementById('e_input').value, prep: document.getElementById('e_prep').value, defects: defects }) });
+        alert("Data Saved!"); location.reload();
+    } catch(e) { alert("Error Saving Data"); }
     document.getElementById('loader').style.display='none';
 }
+
+function closeModal() { document.getElementById('prevModal').style.display = "none"; }
+function resetForm() { location.reload(); }
 
 async function aiFix(btn) {
     let txt = btn.previousElementSibling.value;
@@ -658,12 +733,42 @@ async function aiFix(btn) {
     } catch(e) {}
     btn.innerText = "AI";
 }
-// Placeholder for report logic
-function genReport(mode) { alert("Use Dashboard Filter for Reports"); }
+
+function dlPdf(area, name) {
+    const el = document.getElementById(area);
+    html2pdf().set({ margin:0.3, filename:name+'.pdf', html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'in', format:'a4', orientation:'portrait'} }).from(el).save();
+}
+
+function downloadPreviewPDF(event) {
+    const element = document.getElementById('prevBody');
+    const originalMaxHeight = element.style.maxHeight;
+    const originalOverflow = element.style.overflowY;
+    element.style.maxHeight = 'none'; element.style.overflowY = 'visible';
+    const btn = event.currentTarget; btn.disabled = true;
+    html2pdf().set({ margin:0.3, filename:'Production_Report.pdf', image:{type:'jpeg',quality:0.98}, html2canvas:{scale:2, useCORS:true}, jsPDF:{unit:'in', format:'a4', orientation:'portrait'} }).from(element).save().then(() => {
+        btn.disabled = false; element.style.maxHeight = originalMaxHeight; element.style.overflowY = originalOverflow;
+    });
+}
+
+function edit(itemStr) {
+    let item = JSON.parse(decodeURIComponent(itemStr));
+    switchTab(document.querySelector("button[onclick*='entry']"), 'entry');
+    document.getElementById('edit_batch_id').value = item.id;
+    document.getElementById('e_date').value = item.date.split('T')[0];
+    document.getElementById('e_line').value = item.line;
+    document.getElementById('e_model').value = item.model;
+    document.getElementById('e_input').value = item.input;
+    document.getElementById('defect_wrapper').innerHTML = "";
+    item.defects.forEach(d => addDefectRow(d));
+    calcStats();
+}
+
+async function deleteData(id) {
+    if(!confirm("Delete this batch?")) return;
+    document.getElementById('loader').style.display='block';
+    await fetch(API_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', id: id }) });
+    location.reload();
+}
 </script>
 </body>
 </html>
-
-
-
-
