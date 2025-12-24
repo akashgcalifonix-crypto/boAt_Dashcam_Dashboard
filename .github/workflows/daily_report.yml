@@ -1,0 +1,32 @@
+name: Send Daily Report
+
+on:
+  schedule:
+    # यह टाइम UTC में है। 4:30 UTC = 10:00 AM Indian Time
+    - cron: '30 4 * * *'
+  workflow_dispatch: # यह बटन मैन्युअल टेस्टिंग के लिए है
+
+jobs:
+  run-report:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Libraries
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+          playwright install-deps
+
+      - name: Run Script
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        run: python report_script.py
